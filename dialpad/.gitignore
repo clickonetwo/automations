@@ -1,5 +1,7 @@
 # env file
 .env*
+.flaskenv*
+!.env.project
 !.env.vault
 
 # built artifact
