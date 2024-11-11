@@ -1,0 +1,6 @@
+# env file
+.env*
+!.env.vault
+
+# built artifact
+/dialpad
