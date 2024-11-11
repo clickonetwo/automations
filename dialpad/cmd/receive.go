@@ -9,6 +9,7 @@ package cmd
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -40,13 +41,22 @@ func init() {
 }
 
 func receive(envName string) {
+	startTime := time.Now()
 	_ = storage.PushConfig(envName)
 	defer storage.PopConfig()
 	config := storage.GetConfig()
+	if config.Name == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r := middleware.CreateCoreEngine()
 	r.PUT("/hook", event.ReceiveCallWebhook)
 	r.GET("/status", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "receiver running"})
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "receiver running",
+			"env":     config.Name,
+			"started": startTime.String(),
+			"time":    time.Since(startTime).String(),
+		})
 	})
 	port, found := os.LookupEnv("PORT")
 	if !found {
