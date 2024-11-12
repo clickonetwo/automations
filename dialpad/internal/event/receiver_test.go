@@ -8,6 +8,7 @@ package event
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -15,7 +16,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/go-test/deep"
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/clickonetwo/automations/dialpad/internal/auth"
@@ -25,11 +28,59 @@ import (
 
 var (
 	call = Call{
-		CallId:      "test1",
-		DateStarted: 25,
+		CallId:      -1,
+		DateStarted: time.Now().UnixMilli(),
 		State:       "ringing",
 	}
 )
+
+func TestCallStorableInterfaces(t *testing.T) {
+	var c *Call = nil
+	if c.StoragePrefix() != "call:" {
+		t.Errorf("Calls have a non-'call:' prefix: %s", c.StoragePrefix())
+	}
+	if c.StorageId() != "" {
+		t.Errorf("nil Call.StorageId() should return empty string")
+	}
+	if err := c.SetStorageId("test"); err == nil {
+		t.Errorf("nil Call.SetStorageId() should error out")
+	}
+	if dup := c.Copy(); dup != nil {
+		t.Errorf("nil Call.Copy() should return nil")
+	}
+
+	c = new(Call)
+	*c = call
+	if c.StorageId() != "-1" {
+		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "-1")
+	}
+	if err := c.SetStorageId("test"); err == nil {
+		t.Errorf("Was able to set call storage id to non-numeric string")
+	}
+	if err := c.SetStorageId("30"); err != nil {
+		t.Errorf("Failed to set storage id: %v", err)
+	}
+	if c.StorageId() != "30" {
+		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "30")
+	}
+	dup := c.Copy()
+	if diff := deep.Equal(dup, c); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := c.Downgrade(any(c)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, c); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := c.Downgrade(any(*c)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, c); diff != nil {
+		t.Error(diff)
+	}
+	if _, err := (*c).Downgrade(any(nil)); err == nil {
+		t.Errorf("Call.Downgrade(nil) should error out")
+	}
+}
 
 func TestReceiveWebhookPayloadNoSecret(t *testing.T) {
 	r := middleware.CreateCoreEngine()
@@ -39,6 +90,16 @@ func TestReceiveWebhookPayloadNoSecret(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != 200 {
 		t.Errorf("Wrong status code: %d", w.Code)
+	}
+	calls, err := storage.FetchRangeInterval(context.Background(), ReceivedCalls, -1, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 1 {
+		t.Errorf("Wrong number of calls: %d", len(calls))
+	}
+	if calls[0] != "-1" {
+		t.Errorf("Wrong last call: %s", calls[0])
 	}
 }
 
@@ -56,8 +117,9 @@ func TestReceiveWebhookPayloadSecret(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/hook", strings.NewReader(token))
 	r.ServeHTTP(w, req)
 	if w.Code != 200 {
-		t.Errorf("Wrong status code: %d", w.Code)
+		t.Errorf("wrong status code: %d", w.Code)
 	}
+
 }
 
 func marshalCallAsBody(t *testing.T, p Call) io.Reader {

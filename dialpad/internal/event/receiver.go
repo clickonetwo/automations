@@ -8,8 +8,11 @@ package event
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,27 +21,73 @@ import (
 	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
-type Call struct {
-	CallId           string  `json:"call_id"`
-	Contact          Contact `json:"contact,omitempty"`
-	DateRang         int64   `json:"date_rang,omitempty"`
-	DateStarted      int64   `json:"date_started"`
-	Direction        string  `json:"direction"`
-	Duration         int64   `json:"duration,omitempty"`
-	EntryPointCallId string  `json:"entry_point_call_id,omitempty"`
-	EntryPointTarget string  `json:"entry_point_target,omitempty"`
-	ExternalNumber   string  `json:"external_number"`
-	InternalNumber   string  `json:"internal_number"`
-	State            string  `json:"state"`
+type CallSet string
+
+func (e CallSet) StoragePrefix() string {
+	return "call-set:"
 }
 
-type Contact struct {
-	Phone string `json:"phone"`
-	Type  string `json:"type"`
-	Id    string `json:"id"`
-	Email string `json:"email,omitempty"`
-	Name  string `json:"name,omitempty"`
+func (e CallSet) StorageId() string {
+	return string(e)
 }
+
+type Call struct {
+	// fields with call data
+	CallId         int64  `redis:"callId" json:"call_id"`
+	DateRang       int64  `redis:"dateRang" json:"date_rang,omitempty"`
+	DateStarted    int64  `redis:"dateStarted" json:"date_started"`
+	Direction      string `redis:"direction" json:"direction"`
+	Duration       int64  `redis:"duration" json:"duration,omitempty"`
+	ExternalNumber string `redis:"externalNumber" json:"external_number"`
+	InternalNumber string `redis:"internalNumber" json:"internal_number"`
+	State          string `redis:"state" json:"state"`
+	// fields with webhook data
+	DateReceived int64  `redis:"dateReceived" json:"-"`
+	AsReceived   string `redis:"asReceived" json:"-"`
+}
+
+func (c *Call) StoragePrefix() string {
+	return "call:"
+}
+
+func (c *Call) StorageId() string {
+	if c == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", c.CallId)
+}
+
+func (c *Call) SetStorageId(id string) error {
+	if c == nil {
+		return fmt.Errorf("can't set storage id for nil Call")
+	}
+	val, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return err
+	}
+	c.CallId = val
+	return nil
+}
+
+func (c *Call) Copy() storage.StructPointer {
+	if c == nil {
+		return nil
+	}
+	cpy := *c
+	return &cpy
+}
+
+func (c *Call) Downgrade(a any) (storage.StructPointer, error) {
+	if ac, ok := a.(Call); ok {
+		return &ac, nil
+	}
+	if ac, ok := a.(*Call); ok {
+		return ac, nil
+	}
+	return nil, fmt.Errorf("not a Call: %#v", a)
+}
+
+var ReceivedCalls CallSet = "ReceivedCalls"
 
 func ReceiveCallWebhook(ctx *gin.Context) {
 	var message json.RawMessage
@@ -66,10 +115,17 @@ func ReceiveCallWebhook(ctx *gin.Context) {
 
 func ProcessCallWebhook(ctx *gin.Context, message json.RawMessage) error {
 	middleware.CtxLogS(ctx).Infow("Received dialpad call payload", "payload", string(message))
-	var p Call
+	p := Call{DateReceived: time.Now().UnixMilli(), AsReceived: string(message)}
 	if err := json.Unmarshal(message, &p); err != nil {
+		middleware.CtxLogS(ctx).Infow("Call parse error", "error", err, "payload", string(message))
+	} else {
+		middleware.CtxLogS(ctx).Infow("Parsed call", "call", p)
+	}
+	if err := storage.SaveFields(ctx.Request.Context(), &p); err != nil {
 		return err
 	}
-	middleware.CtxLogS(ctx).Infow("Parsed dialpad call", "call", p)
+	if err := storage.AddScoredMember(ctx.Request.Context(), ReceivedCalls, p.DateReceived, p.StorageId()); err != nil {
+		return err
+	}
 	return nil
 }
