@@ -116,16 +116,18 @@ func ReceiveCallWebhook(ctx *gin.Context) {
 
 func ProcessCallWebhook(ctx *gin.Context, message json.RawMessage) error {
 	middleware.CtxLogS(ctx).Infow("Received dialpad call payload", "payload", string(message))
-	p := Call{DateReceived: time.Now().UnixMilli(), AsReceived: string(message)}
-	if err := json.Unmarshal(message, &p); err != nil {
+	call := Call{DateReceived: time.Now().UnixMilli(), AsReceived: string(message)}
+	if err := json.Unmarshal(message, &call); err != nil {
 		middleware.CtxLogS(ctx).Infow("Call parse error", "error", err, "payload", string(message))
 	} else {
-		middleware.CtxLogS(ctx).Infow("Parsed call", "call", p)
-		if err := storage.SaveFields(ctx.Request.Context(), &p); err != nil {
+		middleware.CtxLogS(ctx).Infow("Parsed call", "call", call)
+		if err := storage.SaveFields(ctx.Request.Context(), &call); err != nil {
 			middleware.CtxLogS(ctx).Infow("Call save error", "error", err)
+			return err
 		} else {
-			if err := storage.AddScoredMember(ctx.Request.Context(), ReceivedCalls, p.DateReceived, p.StorageId()); err != nil {
+			if err := storage.AddScoredMember(ctx.Request.Context(), ReceivedCalls, call.DateReceived, call.StorageId()); err != nil {
 				middleware.CtxLogS(ctx).Infow("Call set save error", "error", err)
+				return err
 			}
 		}
 	}

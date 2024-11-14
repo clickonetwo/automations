@@ -32,6 +32,58 @@ var (
 		DateStarted: time.Now().UnixMilli(),
 		State:       "ringing",
 	}
+	sampleHook = `{
+		"call_id": 5314479320940544,
+		"call_recording_ids": [],
+		"callback_requested": null,
+		"contact": {
+		"email": "",
+		"id": 6480210643730432,
+		"name": "obscure user",
+		"phone": "+15109109100",
+		"type": "local"
+		},
+		"csat_score": null,
+		"date_connected": null,
+		"date_ended": null,
+		"date_first_rang": 1731605955282,
+		"date_queued": null,
+		"date_rang": null,
+		"date_started": 1731605954898,
+		"direction": "inbound",
+		"duration": null,
+		"entry_point_call_id": null,
+		"entry_point_target": {},
+		"event_timestamp": 1731605955966,
+		"external_number": "+15109109100",
+		"group_id": null,
+		"hold_time": null,
+		"internal_number": "+15105105100",
+		"is_transferred": false,
+		"labels": [],
+		"master_call_id": null,
+		"mos_score": null,
+		"operator_call_id": null,
+		"proxy_target": {},
+		"recording_details": [],
+		"routing_breadcrumbs": [],
+		"state": "ringing",
+		"talk_time": null,
+		"target": {
+		"email": "obscured2@example.com",
+		"id": 5991398486736896,
+		"name": "obscure2 user",
+		"office_id": 5527348325810176,
+		"phone": "+15105105100",
+		"type": "user"
+		},
+		"target_availability_status": "open",
+		"total_duration": null,
+		"transcription_text": null,
+		"voicemail_link": null,
+		"voicemail_recording_id": null,
+		"was_recorded": false
+    }`
 )
 
 func TestCallStorableInterfaces(t *testing.T) {
@@ -79,6 +131,43 @@ func TestCallStorableInterfaces(t *testing.T) {
 	}
 	if _, err := (*c).Downgrade(any(nil)); err == nil {
 		t.Errorf("Call.Downgrade(nil) should error out")
+	}
+}
+
+func TestSaveFetchCall(t *testing.T) {
+	ctx := context.Background()
+	data := `{
+		"call_id": 5314479320940544,
+		"date_started": 1731605954898,
+		"direction": "inbound",
+		"external_number": "+15109260499",
+		"internal_number": "+15105290106",
+		"state": "ringing"
+	}`
+	var c Call
+	if err := json.Unmarshal([]byte(data), &c); err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.SaveFields(ctx, &c); err != nil {
+		t.Fatal(err)
+	}
+
+	c1 := Call{CallId: c.CallId}
+	if err := storage.LoadFields(ctx, &c1); err != nil {
+		t.Fatal(err)
+	}
+	if diff := deep.Equal(c, c1); diff != nil {
+		t.Error(diff)
+	}
+	if err := storage.DeleteStorage(ctx, &c); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProcessCallWebhook(t *testing.T) {
+	c, _ := middleware.CreateTestContext()
+	if err := ProcessCallWebhook(c, json.RawMessage(sampleHook)); err != nil {
+		t.Fatal(err)
 	}
 }
 
