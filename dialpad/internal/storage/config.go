@@ -20,6 +20,7 @@ type Environment struct {
 	DbKeyPrefix          string
 	DialpadApiKey        string
 	DialpadWebhookSecret string
+	HerokuHostUrl        string
 }
 
 var (
@@ -29,6 +30,7 @@ var (
 		DbKeyPrefix:          "t:",
 		DialpadApiKey:        "",
 		DialpadWebhookSecret: "",
+		HerokuHostUrl:        "http://127.0.0.1:8080",
 	}
 	loadedConfig = testConfig
 	configStack  []Environment
@@ -101,6 +103,7 @@ func pushEnvConfig(filename string) error {
 		DbKeyPrefix:          os.Getenv("DB_KEY_PREFIX"),
 		DialpadApiKey:        os.Getenv("DIALPAD_API_KEY"),
 		DialpadWebhookSecret: os.Getenv("DIALPAD_WEBHOOK_SECRET"),
+		HerokuHostUrl:        os.Getenv("HEROKU_HOST_URL"),
 	}
 	return nil
 }

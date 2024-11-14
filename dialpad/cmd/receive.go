@@ -7,12 +7,14 @@
 package cmd
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
 	"github.com/clickonetwo/automations/dialpad/internal/event"
 	"github.com/clickonetwo/automations/dialpad/internal/middleware"
@@ -24,8 +26,11 @@ var receiveCmd = &cobra.Command{
 	Use:   "receive",
 	Short: "Receive webhook payloads from Dialpad",
 	Long: `This command runs a server process that receives webhook payloads from Dialpad.
+The registration of the webhook endpoint that receives the calls is done by this process.
 The registration of the subscriptions that generate the webhooks must be done separately.
-The server process, in addition to serving the webhook endpoint, serves a /status endpoint.`,
+
+The server, in addition to serving the webhook endpoint, serves a /status endpoint
+which reports the webhook ID in use so it can be used to create subscriptions.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		envName, err := cmd.Flags().GetString("env")
 		if err != nil {
@@ -45,17 +50,28 @@ func receive(envName string) {
 	_ = storage.PushConfig(envName)
 	defer storage.PopConfig()
 	config := storage.GetConfig()
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+	defer logger.Sync()
+	id, err := event.EnsureWebHook(context.Background(), "/receive/call", config.DialpadWebhookSecret)
+	logger.Info("Registered webhook at startup", zap.String("id", id))
+	if err != nil {
+		panic(err)
+	}
 	if config.Name == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	r := middleware.CreateCoreEngine()
-	r.PUT("/hook", event.ReceiveCallWebhook)
+	r := middleware.CreateCoreEngine(logger)
+	r.PUT("/receive/call", event.ReceiveCallWebhook)
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status":  "receiver running",
-			"env":     config.Name,
-			"started": startTime.String(),
-			"time":    time.Since(startTime).String(),
+			"status":     "receiver running",
+			"env":        config.Name,
+			"started":    startTime.String(),
+			"time":       time.Since(startTime).String(),
+			"webhook_id": id,
 		})
 	})
 	port, found := os.LookupEnv("PORT")
@@ -66,6 +82,11 @@ func receive(envName string) {
 	if config.Name == "development" {
 		address = "127.0.0.1:" + port
 	}
+	logger.Info(
+		"Listening on address",
+		zap.String("endpoint", config.HerokuHostUrl),
+		zap.String("address", address),
+	)
 	if err := r.Run(address); err != nil {
 		panic(err)
 	}
