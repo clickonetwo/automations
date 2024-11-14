@@ -64,7 +64,7 @@ func receive(envName string) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := middleware.CreateCoreEngine(logger)
-	r.PUT("/receive/call", event.ReceiveCallWebhook)
+	r.POST("/receive/call", event.ReceiveCallWebhook)
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":     "receiver running",
