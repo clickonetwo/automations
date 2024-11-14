@@ -9,7 +9,6 @@ package event
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 
 	"github.com/clickonetwo/automations/dialpad/internal/auth"
 	"github.com/clickonetwo/automations/dialpad/internal/middleware"
@@ -83,7 +83,9 @@ func TestCallStorableInterfaces(t *testing.T) {
 }
 
 func TestReceiveWebhookPayloadNoSecret(t *testing.T) {
-	r := middleware.CreateCoreEngine()
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	r := middleware.CreateCoreEngine(logger)
 	r.POST("/hook", ReceiveCallWebhook)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/hook", marshalCallAsBody(t, call))
@@ -105,13 +107,14 @@ func TestReceiveWebhookPayloadNoSecret(t *testing.T) {
 
 func TestReceiveWebhookPayloadSecret(t *testing.T) {
 	secret := auth.MakeNonce()
-	key, _ := hex.DecodeString(secret)
 	env := storage.GetConfig()
 	env.DialpadWebhookSecret = secret
 	storage.PushAlteredConfig(env)
 	defer storage.PopConfig()
-	token, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, marshalCallAsClaims(t, call)).SignedString(key)
-	r := middleware.CreateCoreEngine()
+	token, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, marshalCallAsClaims(t, call)).SignedString([]byte(secret))
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	r := middleware.CreateCoreEngine(logger)
 	r.POST("/hook", ReceiveCallWebhook)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/hook", strings.NewReader(token))

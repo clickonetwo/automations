@@ -7,7 +7,6 @@
 package auth
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"testing"
 
@@ -19,9 +18,11 @@ import (
 
 func TestValidateDialpadJwt(t *testing.T) {
 	secret := MakeNonce()
-	key, _ := hex.DecodeString(secret)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"date_started": 123456})
-	signed, _ := token.SignedString(key)
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatal(err)
+	}
 	c, _ := middleware.CreateTestContext()
 	if claims, err := ValidateDialpadJwt(c, signed, secret); err != nil {
 		t.Fatal(err)
@@ -34,8 +35,5 @@ func TestValidateDialpadJwt(t *testing.T) {
 	}
 	if _, err := ValidateDialpadJwt(c, signed, MakeNonce()); err == nil {
 		t.Errorf("validated dialpad jwt with wrong secret")
-	}
-	if _, err := ValidateDialpadJwt(c, signed, "secret"); err == nil {
-		t.Errorf("validated dialpad jwt with invalid secret")
 	}
 }

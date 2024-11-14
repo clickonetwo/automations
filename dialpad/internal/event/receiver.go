@@ -92,6 +92,7 @@ var ReceivedCalls CallSet = "ReceivedCalls"
 func ReceiveCallWebhook(ctx *gin.Context) {
 	var message json.RawMessage
 	body, err := io.ReadAll(ctx.Request.Body)
+	_ = ctx.Request.Body.Close()
 	if err != nil {
 		_ = ctx.AbortWithError(http.StatusInternalServerError, err)
 		return

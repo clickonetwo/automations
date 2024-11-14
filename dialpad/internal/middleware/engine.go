@@ -17,11 +17,9 @@ import (
 )
 
 // CreateCoreEngine returns a gin router with zap logging and recovery
-func CreateCoreEngine() *gin.Engine {
+func CreateCoreEngine(logger *zap.Logger) *gin.Engine {
 	r := gin.New()
 	_ = r.SetTrustedProxies(nil)
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
 	r.Use(ginzap.Ginzap(logger, time.RFC3339, false))
 	r.Use(ginzap.RecoveryWithZap(logger, false))
 	r.Use(AddCtxLoggers(logger))

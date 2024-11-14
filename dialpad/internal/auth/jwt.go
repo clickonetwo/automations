@@ -19,17 +19,12 @@ import (
 )
 
 func ValidateDialpadJwt(c *gin.Context, signed, secret string) (json.RawMessage, error) {
-	key, err := hex.DecodeString(secret)
-	if err != nil {
-		middleware.CtxLogS(c).Errorf("Secret %q is corrupt, can't validate dialpad JWT: %v", secret, err)
-		return nil, err
-	}
 	validator := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			// notest
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return key, nil
+		return []byte(secret), nil
 	}
 	token, err1 := jwt.Parse(signed, validator, jwt.WithValidMethods([]string{"HS256", "HS384", "HS512"}))
 	if err1 != nil {
