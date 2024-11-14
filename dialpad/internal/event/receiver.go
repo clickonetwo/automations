@@ -121,12 +121,13 @@ func ProcessCallWebhook(ctx *gin.Context, message json.RawMessage) error {
 		middleware.CtxLogS(ctx).Infow("Call parse error", "error", err, "payload", string(message))
 	} else {
 		middleware.CtxLogS(ctx).Infow("Parsed call", "call", p)
-	}
-	if err := storage.SaveFields(ctx.Request.Context(), &p); err != nil {
-		return err
-	}
-	if err := storage.AddScoredMember(ctx.Request.Context(), ReceivedCalls, p.DateReceived, p.StorageId()); err != nil {
-		return err
+		if err := storage.SaveFields(ctx.Request.Context(), &p); err != nil {
+			middleware.CtxLogS(ctx).Infow("Call save error", "error", err)
+		} else {
+			if err := storage.AddScoredMember(ctx.Request.Context(), ReceivedCalls, p.DateReceived, p.StorageId()); err != nil {
+				middleware.CtxLogS(ctx).Infow("Call set save error", "error", err)
+			}
+		}
 	}
 	return nil
 }
