@@ -92,6 +92,13 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 		state = val.(string)
 	}
 	switch state {
+	case "voicemail":
+		middleware.CtxLogS(ctx).Infow(
+			"Voicemail started",
+			"time", received,
+			"contact", extractContact(hook, "target"),
+			"url", hook["voicemail_link"],
+		)
 	case "voicemail_uploaded":
 		middleware.CtxLogS(ctx).Infow(
 			"Voicemail received",
@@ -155,6 +162,10 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 }
 
 func extractContact(hook jsObject, label string) map[string]string {
+	_, ok := hook[label]
+	if !ok {
+		return nil
+	}
 	contact := hook[label].(map[string]interface{})
 	if contact == nil {
 		return nil
