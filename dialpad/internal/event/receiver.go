@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,115 +20,150 @@ import (
 	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
-type CallSet string
+type jsObject map[string]interface{}
 
-func (e CallSet) StoragePrefix() string {
-	return "call-set:"
+type HookSet string
+
+func (e HookSet) StoragePrefix() string {
+	return "hook-set:"
 }
 
-func (e CallSet) StorageId() string {
+func (e HookSet) StorageId() string {
 	return string(e)
 }
 
-type Call struct {
-	// fields with call data
-	CallId         int64  `redis:"callId" json:"call_id"`
-	DateRang       int64  `redis:"dateRang" json:"date_rang,omitempty"`
-	DateStarted    int64  `redis:"dateStarted" json:"date_started"`
-	Direction      string `redis:"direction" json:"direction"`
-	Duration       int64  `redis:"duration" json:"duration,omitempty"`
-	ExternalNumber string `redis:"externalNumber" json:"external_number"`
-	InternalNumber string `redis:"internalNumber" json:"internal_number"`
-	State          string `redis:"state" json:"state"`
-	// fields with webhook data
-	DateReceived int64  `redis:"dateReceived" json:"-"`
-	AsReceived   string `redis:"asReceived" json:"-"`
-}
+var ActionHooks HookSet = "ActionHooks"
+var IgnoreHooks HookSet = "IgnoreHooks"
 
-func (c *Call) StoragePrefix() string {
-	return "call:"
-}
-
-func (c *Call) StorageId() string {
-	if c == nil {
-		return ""
-	}
-	return fmt.Sprintf("%d", c.CallId)
-}
-
-func (c *Call) SetStorageId(id string) error {
-	if c == nil {
-		return fmt.Errorf("can't set storage id for nil Call")
-	}
-	val, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		return err
-	}
-	c.CallId = val
-	return nil
-}
-
-func (c *Call) Copy() storage.StructPointer {
-	if c == nil {
-		return nil
-	}
-	cpy := *c
-	return &cpy
-}
-
-func (c *Call) Downgrade(a any) (storage.StructPointer, error) {
-	if ac, ok := a.(Call); ok {
-		return &ac, nil
-	}
-	if ac, ok := a.(*Call); ok {
-		return ac, nil
-	}
-	return nil, fmt.Errorf("not a Call: %#v", a)
-}
-
-var ReceivedCalls CallSet = "ReceivedCalls"
-
-func ReceiveCallWebhook(ctx *gin.Context) {
-	var message json.RawMessage
+func ReceiveWebhook(ctx *gin.Context) {
+	defer ctx.Request.Body.Close()
 	body, err := io.ReadAll(ctx.Request.Body)
-	_ = ctx.Request.Body.Close()
 	if err != nil {
 		_ = ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	env := storage.GetConfig()
-	if env.DialpadWebhookSecret == "" {
-		message = body
-	} else {
-		message, err = auth.ValidateDialpadJwt(ctx, string(body), env.DialpadWebhookSecret)
-		if err != nil {
-			_ = ctx.AbortWithError(http.StatusBadRequest, err)
-			return
-		}
-	}
-	if err = ProcessCallWebhook(ctx, message); err != nil {
+	message, err := extractWebhookPayload(ctx, body)
+	if err != nil {
 		_ = ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	switch t := ctx.Param("type"); t {
+	case "call":
+		err = processCallWebhook(ctx, message)
+	case "sms":
+		err = processSmsWebhook(ctx, message)
+	default:
+		err = fmt.Errorf("unknown webhook type: %s", t)
+	}
+	if err != nil {
+		_ = ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"status": "accepted"})
 }
 
-func ProcessCallWebhook(ctx *gin.Context, message json.RawMessage) error {
-	middleware.CtxLogS(ctx).Infow("Received dialpad call payload", "payload", string(message))
-	call := Call{DateReceived: time.Now().UnixMilli(), AsReceived: string(message)}
-	if err := json.Unmarshal(message, &call); err != nil {
-		middleware.CtxLogS(ctx).Infow("Call parse error", "error", err, "payload", string(message))
+func extractWebhookPayload(ctx *gin.Context, body []byte) (jsObject, error) {
+	var (
+		message json.RawMessage
+		err     error
+	)
+	env := storage.GetConfig()
+	if env.DialpadWebhookSecret == "" {
+		message = body
 	} else {
-		middleware.CtxLogS(ctx).Infow("Parsed call", "call", call)
-		if err := storage.SaveFields(ctx.Request.Context(), &call); err != nil {
-			middleware.CtxLogS(ctx).Infow("Call save error", "error", err)
-			return err
-		} else {
-			if err := storage.AddScoredMember(ctx.Request.Context(), ReceivedCalls, call.DateReceived, call.StorageId()); err != nil {
-				middleware.CtxLogS(ctx).Infow("Call set save error", "error", err)
-				return err
-			}
-		}
+		message, err = auth.ValidateDialpadJwt(ctx, string(body), env.DialpadWebhookSecret)
+	}
+	if err != nil {
+		return nil, err
+	}
+	hook := make(map[string]interface{})
+	if err := json.Unmarshal(message, &hook); err != nil {
+		middleware.CtxLogS(ctx).Infow("Webhook parse error", "error", err, "payload", string(message))
+		return nil, err
+	}
+	return hook, nil
+}
+
+func processCallWebhook(ctx *gin.Context, hook jsObject) error {
+	targetSet := ActionHooks
+	received := float64(time.Now().UnixMilli()) / 1000
+	var state string
+	if val, ok := hook["state"]; ok {
+		state = val.(string)
+	}
+	switch state {
+	case "voicemail_uploaded":
+		middleware.CtxLogS(ctx).Infow(
+			"Voicemail received",
+			"time", received,
+			"contact", extractContact(hook, "target"),
+			"url", hook["voicemail_link"],
+		)
+	case "connected":
+		middleware.CtxLogS(ctx).Infow(
+			"Connected",
+			"time", received,
+			"contact", extractContact(hook, "contact"),
+		)
+	default:
+		middleware.CtxLogS(ctx).Infow("Ignoring call", "state", state)
+		targetSet = IgnoreHooks
+	}
+	bytes, err := json.MarshalIndent(hook, "", "  ")
+	if err != nil {
+		return err
+	}
+	err = storage.AddScoredMember(ctx.Request.Context(), targetSet, received, string(bytes))
+	if err != nil {
+		return err
 	}
 	return nil
+}
+
+func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
+	targetSet := ActionHooks
+	received := float64(time.Now().UnixMilli()) / 1000
+	var text string
+	if val, ok := hook["text"]; ok {
+		text = val.(string)
+	}
+	switch text {
+	case "":
+		middleware.CtxLogS(ctx).Infow(
+			"Ignoring empty SMS",
+			"time", received,
+			"contact", extractContact(hook, "contact"),
+		)
+		targetSet = IgnoreHooks
+	default:
+		middleware.CtxLogS(ctx).Infow(
+			"Received SMS",
+			"time", received,
+			"contact", extractContact(hook, "contact"),
+			"text", text,
+		)
+	}
+	bytes, err := json.MarshalIndent(hook, "", "  ")
+	if err != nil {
+		return err
+	}
+	err = storage.AddScoredMember(ctx.Request.Context(), targetSet, received, string(bytes))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func extractContact(hook jsObject, label string) map[string]string {
+	contact := hook[label].(map[string]interface{})
+	if contact == nil {
+		return nil
+	}
+	m := map[string]string{"name": contact["name"].(string)}
+	if phone, ok := contact["phone"]; ok {
+		m["phone"] = phone.(string)
+	} else {
+		m["phone"] = contact["phone_number"].(string)
+	}
+	return m
 }

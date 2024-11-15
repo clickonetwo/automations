@@ -55,23 +55,28 @@ func receive(envName string) {
 		panic(err)
 	}
 	defer logger.Sync()
-	id, err := event.EnsureWebHook(context.Background(), "/receive/call", config.DialpadWebhookSecret)
-	logger.Info("Registered webhook at startup", zap.String("id", id))
+	callId, err := event.EnsureWebHook(context.Background(), "/receive/call", config.DialpadWebhookSecret)
 	if err != nil {
 		panic(err)
 	}
+	smsId, err := event.EnsureWebHook(context.Background(), "/receive/sms", config.DialpadWebhookSecret)
+	if err != nil {
+		panic(err)
+	}
+	logger.Info("Registered webhooks at startup", zap.String("calls", callId), zap.String("sms", smsId))
 	if config.Name == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := middleware.CreateCoreEngine(logger)
-	r.POST("/receive/call", event.ReceiveCallWebhook)
+	r.POST("/receive/:type", event.ReceiveWebhook)
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status":     "receiver running",
-			"env":        config.Name,
-			"started":    startTime.String(),
-			"time":       time.Since(startTime).String(),
-			"webhook_id": id,
+			"status":    "receiver running",
+			"env":       config.Name,
+			"started":   startTime.String(),
+			"time":      time.Since(startTime).String(),
+			"call_hook": callId,
+			"sms_hook":  smsId,
 		})
 	})
 	port, found := os.LookupEnv("PORT")
