@@ -191,11 +191,11 @@ func FetchRangeInterval[T SortedSet](ctx context.Context, obj T, start, end int6
 	return res.Val(), nil
 }
 
-func FetchRangeScoreInterval[T SortedSet](ctx context.Context, obj T, min, max int64) ([]string, error) {
+func FetchRangeScoreInterval[T SortedSet](ctx context.Context, obj T, min, max float64) ([]string, error) {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
-	minStr := strconv.FormatInt(min, 10)
-	maxStr := strconv.FormatInt(max, 10)
+	minStr := strconv.FormatFloat(min, 'f', -1, 64)
+	maxStr := strconv.FormatFloat(max, 'f', -1, 64)
 	res := db.ZRangeByScore(ctx, key, &redis.ZRangeBy{Min: minStr, Max: maxStr})
 	if err := res.Err(); err != nil {
 		return nil, err
@@ -203,10 +203,10 @@ func FetchRangeScoreInterval[T SortedSet](ctx context.Context, obj T, min, max i
 	return res.Val(), nil
 }
 
-func AddScoredMember[T SortedSet](ctx context.Context, obj T, score int64, member string) error {
+func AddScoredMember[T SortedSet](ctx context.Context, obj T, score float64, member string) error {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
-	res := db.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: member})
+	res := db.ZAdd(ctx, key, redis.Z{Score: score, Member: member})
 	if err := res.Err(); err != nil {
 		return err
 	}
