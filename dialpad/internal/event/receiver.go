@@ -88,8 +88,8 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 	targetSet := ActionHooks
 	received := float64(time.Now().UnixMilli()) / 1000
 	var state string
-	if val, ok := hook["state"]; ok {
-		state = val.(string)
+	if val, ok := hook["state"].(string); ok {
+		state = val
 	}
 	switch state {
 	case "voicemail":
@@ -131,8 +131,8 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 	targetSet := ActionHooks
 	received := float64(time.Now().UnixMilli()) / 1000
 	var text string
-	if val, ok := hook["text"]; ok {
-		text = val.(string)
+	if val, ok := hook["text"].(string); ok {
+		text = val
 	}
 	switch text {
 	case "":
@@ -162,19 +162,18 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 }
 
 func extractContact(hook jsObject, label string) map[string]string {
-	_, ok := hook[label]
+	contact, ok := hook[label].(map[string]interface{})
 	if !ok {
 		return nil
 	}
-	contact := hook[label].(map[string]interface{})
-	if contact == nil {
-		return nil
+	m := map[string]string{"name": "", "phone": ""}
+	if name, ok := contact["name"].(string); ok {
+		m["name"] = name
 	}
-	m := map[string]string{"name": contact["name"].(string)}
-	if phone, ok := contact["phone"]; ok {
-		m["phone"] = phone.(string)
-	} else {
-		m["phone"] = contact["phone_number"].(string)
+	if phone, ok := contact["phone"].(string); ok {
+		m["phone"] = phone
+	} else if phone, ok = contact["phone_number"].(string); ok {
+		m["phone"] = phone
 	}
 	return m
 }
