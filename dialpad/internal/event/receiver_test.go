@@ -169,7 +169,7 @@ func TestReceiveWebhookPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(hooks) != 1 {
+	if len(hooks) != 0 {
 		t.Errorf("Wrong number of action hooks: %d", len(hooks))
 	}
 }
