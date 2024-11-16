@@ -25,17 +25,21 @@ var dumpCmd = &cobra.Command{
 to view the events that have been received. A number of different options
 are supported for viewing and filtering the received events.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		dump()
+		env, err := cmd.Flags().GetString("env")
+		if err != nil {
+			panic(err)
+		}
+		dump(env)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(dumpCmd)
-
+	dumpCmd.Flags().StringP("env", "e", "production", "environment to dump")
 }
 
-func dump() {
-	_ = storage.PushConfig("")
+func dump(env string) {
+	_ = storage.PushConfig(env)
 	defer storage.PopConfig()
 	actions, err := storage.FetchRangeInterval(context.Background(), event.ActionHooks, 0, -1)
 	if err != nil {
