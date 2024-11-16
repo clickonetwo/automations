@@ -85,7 +85,7 @@ func extractWebhookPayload(ctx *gin.Context, body []byte) (jsObject, error) {
 }
 
 func processCallWebhook(ctx *gin.Context, hook jsObject) error {
-	targetSet := ActionHooks
+	targetSet := IgnoreHooks
 	received := float64(time.Now().UnixMilli()) / 1000
 	var state string
 	if val, ok := hook["state"].(string); ok {
@@ -95,28 +95,35 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 	case "voicemail":
 		middleware.CtxLogS(ctx).Infow(
 			"Voicemail started",
+			"state", state,
 			"time", received,
-			"contact", extractContact(hook, "target"),
+			"contact", extractContact(hook, "contact"),
+			"target", extractContact(hook, "target"),
 			"url", hook["voicemail_link"],
 		)
 	case "voicemail_uploaded":
 		middleware.CtxLogS(ctx).Infow(
 			"Voicemail received",
+			"state", state,
 			"time", received,
-			"contact", extractContact(hook, "target"),
+			"contact", extractContact(hook, "contact"),
+			"target", extractContact(hook, "target"),
 			"url", hook["voicemail_link"],
 		)
 	case "connected":
 		middleware.CtxLogS(ctx).Infow(
-			"Connected",
+			"Call answered",
+			"state", state,
 			"time", received,
 			"contact", extractContact(hook, "contact"),
+			"target", extractContact(hook, "target"),
 		)
 	default:
 		middleware.CtxLogS(ctx).Infow("Ignoring call",
 			"state", state,
 			"time", received,
 			"contact", extractContact(hook, "contact"),
+			"target", extractContact(hook, "target"),
 		)
 		targetSet = IgnoreHooks
 	}
@@ -132,7 +139,7 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 }
 
 func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
-	targetSet := ActionHooks
+	targetSet := IgnoreHooks
 	received := float64(time.Now().UnixMilli()) / 1000
 	var text string
 	if val, ok := hook["text"].(string); ok {
@@ -141,16 +148,17 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 	switch text {
 	case "":
 		middleware.CtxLogS(ctx).Infow(
-			"Ignoring empty SMS",
+			"Received empty SMS",
 			"time", received,
 			"contact", extractContact(hook, "contact"),
+			"target", extractContact(hook, "target"),
 		)
-		targetSet = IgnoreHooks
 	default:
 		middleware.CtxLogS(ctx).Infow(
 			"Received SMS",
 			"time", received,
 			"contact", extractContact(hook, "contact"),
+			"target", extractContact(hook, "target"),
 			"text", text,
 		)
 	}
@@ -170,14 +178,17 @@ func extractContact(hook jsObject, label string) map[string]string {
 	if !ok {
 		return nil
 	}
-	m := map[string]string{"name": "", "phone": ""}
-	if name, ok := contact["name"].(string); ok {
-		m["name"] = name
+	m := map[string]string{"name": ""}
+	if n, ok := contact["name"].(string); ok {
+		m["name"] = n
 	}
-	if phone, ok := contact["phone"].(string); ok {
-		m["phone"] = phone
-	} else if phone, ok = contact["phone_number"].(string); ok {
-		m["phone"] = phone
+	if t, ok := contact["type"].(string); ok {
+		m["type"] = t
+	}
+	if p, ok := contact["phone"].(string); ok {
+		m["phone"] = p
+	} else if p, ok = contact["phone_number"].(string); ok {
+		m["phone"] = p
 	}
 	return m
 }
