@@ -144,8 +144,12 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 		text = val
 	}
 	var toNumbers []string
-	if val, ok := hook["to_number"].([]string); ok {
-		toNumbers = val
+	if slice, ok := hook["to_number"].([]any); ok {
+		for _, v := range slice {
+			if val, ok := v.(string); ok {
+				toNumbers = append(toNumbers, val)
+			}
+		}
 	}
 	middleware.CtxLogS(ctx).Infow(
 		"Received SMS",
