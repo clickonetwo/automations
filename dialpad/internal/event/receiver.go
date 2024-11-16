@@ -113,7 +113,11 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 			"contact", extractContact(hook, "contact"),
 		)
 	default:
-		middleware.CtxLogS(ctx).Infow("Ignoring call", "state", state)
+		middleware.CtxLogS(ctx).Infow("Ignoring call",
+			"state", state,
+			"time", received,
+			"contact", extractContact(hook, "contact"),
+		)
 		targetSet = IgnoreHooks
 	}
 	bytes, err := json.MarshalIndent(hook, "", "  ")
