@@ -120,7 +120,7 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 		)
 		targetSet = IgnoreHooks
 	}
-	bytes, err := json.MarshalIndent(hook, "", "  ")
+	bytes, err := json.Marshal(hook)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 			"text", text,
 		)
 	}
-	bytes, err := json.MarshalIndent(hook, "", "  ")
+	bytes, err := json.Marshal(hook)
 	if err != nil {
 		return err
 	}
