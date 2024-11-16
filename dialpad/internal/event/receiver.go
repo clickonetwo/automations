@@ -143,16 +143,16 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 	if val, ok := hook["text"].(string); ok {
 		text = val
 	}
-	var toNumber string
-	if val, ok := hook["to_number"].(string); ok {
-		toNumber = val
+	var toNumbers []string
+	if val, ok := hook["to_number"].([]string); ok {
+		toNumbers = val
 	}
 	middleware.CtxLogS(ctx).Infow(
 		"Received SMS",
 		"time", received,
 		"contact", extractContact(hook, "contact"),
 		"target", extractContact(hook, "target"),
-		"to_number", toNumber,
+		"to_numbers", toNumbers,
 		"text", text,
 	)
 	bytes, err := json.Marshal(hook)
