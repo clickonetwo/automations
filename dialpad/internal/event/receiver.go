@@ -91,32 +91,29 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 	if val, ok := hook["state"].(string); ok {
 		state = val
 	}
+	var toNumber string
+	if val, ok := hook["internal_number"].(string); ok {
+		toNumber = val
+	}
 	switch state {
-	case "voicemail":
+	case "voicemail", "voicemail_uploaded":
 		middleware.CtxLogS(ctx).Infow(
-			"Voicemail started",
+			"Voicemail event",
 			"state", state,
 			"time", received,
 			"contact", extractContact(hook, "contact"),
 			"target", extractContact(hook, "target"),
-			"url", hook["voicemail_link"],
-		)
-	case "voicemail_uploaded":
-		middleware.CtxLogS(ctx).Infow(
-			"Voicemail received",
-			"state", state,
-			"time", received,
-			"contact", extractContact(hook, "contact"),
-			"target", extractContact(hook, "target"),
+			"to_number", toNumber,
 			"url", hook["voicemail_link"],
 		)
 	case "connected":
 		middleware.CtxLogS(ctx).Infow(
-			"Call answered",
+			"Call answered event",
 			"state", state,
 			"time", received,
 			"contact", extractContact(hook, "contact"),
 			"target", extractContact(hook, "target"),
+			"to_number", toNumber,
 		)
 	default:
 		middleware.CtxLogS(ctx).Infow("Ignoring call",
@@ -124,6 +121,7 @@ func processCallWebhook(ctx *gin.Context, hook jsObject) error {
 			"time", received,
 			"contact", extractContact(hook, "contact"),
 			"target", extractContact(hook, "target"),
+			"to_number", toNumber,
 		)
 		targetSet = IgnoreHooks
 	}
@@ -145,23 +143,18 @@ func processSmsWebhook(ctx *gin.Context, hook jsObject) error {
 	if val, ok := hook["text"].(string); ok {
 		text = val
 	}
-	switch text {
-	case "":
-		middleware.CtxLogS(ctx).Infow(
-			"Received empty SMS",
-			"time", received,
-			"contact", extractContact(hook, "contact"),
-			"target", extractContact(hook, "target"),
-		)
-	default:
-		middleware.CtxLogS(ctx).Infow(
-			"Received SMS",
-			"time", received,
-			"contact", extractContact(hook, "contact"),
-			"target", extractContact(hook, "target"),
-			"text", text,
-		)
+	var toNumber string
+	if val, ok := hook["to_number"].(string); ok {
+		toNumber = val
 	}
+	middleware.CtxLogS(ctx).Infow(
+		"Received SMS",
+		"time", received,
+		"contact", extractContact(hook, "contact"),
+		"target", extractContact(hook, "target"),
+		"to_number", toNumber,
+		"text", text,
+	)
 	bytes, err := json.Marshal(hook)
 	if err != nil {
 		return err
