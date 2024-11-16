@@ -70,13 +70,13 @@ func merge(left, right []string) ([]map[string]any, error) {
 			if err := json.Unmarshal([]byte(left[i]), &l); err != nil {
 				return nil, err
 			}
-			lStart = l["date_started"].(float64)
+			lStart = l["event_timestamp"].(float64)
 		}
-		if j < len(right) && r == nil {
+		if r == nil && j < len(right) {
 			if err := json.Unmarshal([]byte(right[j]), &r); err != nil {
 				return nil, err
 			}
-			rStart = r["date_started"].(float64)
+			rStart = r["event_timestamp"].(float64)
 		}
 		if l != nil && r != nil {
 			if lStart <= rStart {
