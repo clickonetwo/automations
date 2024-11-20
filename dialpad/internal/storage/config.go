@@ -74,7 +74,7 @@ func pushEnvConfig(filename string) error {
 	var d string
 	var err error
 	if filename == "" {
-		if d, err = findEnvFile(".env.vault"); err == nil {
+		if d, err = findEnvFile(".env.vault", true); err == nil {
 			if d == "" {
 				err = godotenvvault.Overload()
 			} else {
@@ -89,7 +89,7 @@ func pushEnvConfig(filename string) error {
 			}
 		}
 	} else {
-		if d, err = findEnvFile(filename); err == nil {
+		if d, err = findEnvFile(filename, false); err == nil {
 			err = godotenvvault.Overload(d + filename)
 		}
 	}
@@ -117,7 +117,7 @@ func PopConfig() {
 	return
 }
 
-func findEnvFile(name string) (string, error) {
+func findEnvFile(name string, fallback bool) (string, error) {
 	for i := range 5 {
 		d := ""
 		for range i {
@@ -125,6 +125,11 @@ func findEnvFile(name string) (string, error) {
 		}
 		if _, err := os.Stat(d + name); err == nil {
 			return d, nil
+		}
+		if fallback {
+			if _, err := os.Stat(d + ".env"); err == nil {
+				return d, nil
+			}
 		}
 	}
 	return "", fmt.Errorf("no file %q found in path", name)
