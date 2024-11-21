@@ -3,6 +3,7 @@
  * All the copyrighted work in this repository is licensed under the
  * open source MIT License, reproduced in the LICENSE file.
  */
+
 package cmd
 
 import (
@@ -41,7 +42,7 @@ func init() {
 }
 
 func validate(path string) {
-	entries, err := contacts.ImportContacts(path, true)
+	entries, err := contacts.ParseContacts(path, true)
 	if err != nil {
 		log.Fatalf("Could not read file at path %s: %v", path, err)
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	projectPrefix string = "dialpad:"
+	projectPrefix = "dialpad:"
 	clientUrl     string
 	client        *redis.Client
 	keyPrefix     string

@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/go-test/deep"
+	"github.com/schollz/progressbar/v3"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
@@ -22,10 +23,10 @@ import (
 
 var (
 	ImportColumnNames = []string{"Creation Date", "First_Name", "Last_Name", "Phones", "Email"}
-	ExportColumnNames = []string{"Dialpad UID", "First Name", "Last Name", "Phones", "Emails"}
+	ExportColumnNames = []string{"Dialpad UID", "Creation Stamp", "First Name", "Last Name", "Phones", "Emails"}
 )
 
-func ImportContacts(path string, showErrors bool) ([]Entry, error) {
+func ParseContacts(path string, showErrors bool) ([]Entry, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -34,9 +35,23 @@ func ImportContacts(path string, showErrors bool) ([]Entry, error) {
 	reader := BOMAwareCSVReader(f)
 	record, err := reader.Read()
 	if diff := deep.Equal(record, ImportColumnNames); diff != nil {
-		return nil, fmt.Errorf("unexpected column names in input: %v", diff)
+		return nil, fmt.Errorf("unexpected column names: %v", record)
 	}
-	return parseRecords(reader, showErrors)
+	return parseRecords(reader, showErrors), nil
+}
+
+func ImportContacts(path string) ([]Entry, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	reader := BOMAwareCSVReader(f)
+	record, err := reader.Read()
+	if diff := deep.Equal(record, ExportColumnNames); diff != nil {
+		return nil, fmt.Errorf("unexpected column names: %v", record)
+	}
+	return loadRecords(reader)
 }
 
 func ExportContacts(entries []Entry, path string) error {
@@ -53,19 +68,22 @@ func ExportContacts(entries []Entry, path string) error {
 	for _, entry := range entries {
 		phones := strings.Join(entry.Phones, ";")
 		emails := strings.Join(entry.Emails, ";")
-		if err = writer.Write([]string{entry.Uid, entry.FirstName, entry.LastName, phones, emails}); err != nil {
+		if err = writer.Write([]string{entry.FullId, entry.Uid, entry.FirstName, entry.LastName, phones, emails}); err != nil {
 			log.Panicf("error writing record to csv: %v", err)
 		}
 	}
 	return nil
 }
 
-func parseRecords(reader *csv.Reader, showErrors bool) ([]Entry, error) {
+func parseRecords(reader *csv.Reader, showErrors bool) []Entry {
 	var result []Entry
 	var errs []error
 	var row = 1
+	bar := progressbar.Default(-1, "Validating entries")
+	defer bar.Close()
 	for {
 		row++
+		_ = bar.Add(1)
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
@@ -118,6 +136,40 @@ func parseRecords(reader *csv.Reader, showErrors bool) ([]Entry, error) {
 			if showErrors {
 				// No one cares about email errors
 			}
+		}
+		result = append(result, entry)
+	}
+	return result
+}
+
+func loadRecords(reader *csv.Reader) ([]Entry, error) {
+	var result []Entry
+	var row = 1
+	bar := progressbar.Default(-1, "Loading entries")
+	defer bar.Close()
+	for {
+		row++
+		_ = bar.Add(1)
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Panicf("error reading record from csv: %v", err)
+		}
+		if len(record) != len(ExportColumnNames) {
+			log.Panicf("row %d: expected %d fields, got %d", row, len(ExportColumnNames), len(record))
+		}
+		entry := Entry{
+			FullId:    record[0],
+			Uid:       record[1],
+			FirstName: record[2],
+			LastName:  record[3],
+			Phones:    strings.Split(record[4], ";"),
+			Emails:    strings.Split(record[5], ";"),
+		}
+		if entry.FullId == "" {
+			return nil, fmt.Errorf("no full id found in row %d", row)
 		}
 		result = append(result, entry)
 	}
