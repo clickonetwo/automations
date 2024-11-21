@@ -46,9 +46,12 @@ func download(path string, accountId string) {
 		log.Fatalf("You must have a .env file containg the Dialpad API key")
 	}
 	defer storage.PopConfig()
-	entries, err := contacts.ListContacts(accountId)
-	if err != nil {
-		log.Printf("Download was interrupted: %v", err)
+	entries, errs := contacts.ListContacts(accountId)
+	if errs != nil {
+		log.Printf("Dialpad download errors:")
+		for _, err := range errs {
+			log.Printf("--> %v", err)
+		}
 		path = strings.TrimSuffix(path, ".csv") + ".partial.csv"
 		log.Printf("Saving partial results (%d entries) to %s", len(entries), path)
 	} else {

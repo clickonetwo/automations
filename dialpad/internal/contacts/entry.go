@@ -7,7 +7,8 @@
 package contacts
 
 import (
-	"errors"
+	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 
@@ -15,6 +16,7 @@ import (
 )
 
 type Entry struct {
+	FullId    string   `json:"id,omitempty"`
 	Uid       string   `json:"uid"`
 	FirstName string   `json:"first_name"`
 	LastName  string   `json:"last_name"`
@@ -38,42 +40,27 @@ func DiffEntries(dialpad, local []Entry) (update []Entry, create []Entry) {
 	return
 }
 
-func FindOffsetDuplicates(entries []Entry, offset int64) []Entry {
-	keyMap := make(map[string][]Entry, len(entries))
-	for _, e := range entries {
-		if len(e.Phones) > 0 {
-			keyMap[e.Phones[0]] = append(keyMap[e.Phones[0]], e)
-		} else if len(e.Emails) > 0 {
-			keyMap[e.Emails[0]] = append(keyMap[e.Emails[0]], e)
+func CompareById(left []Entry, right []Entry) (both []Entry, leftOnly []Entry, rightOnly []Entry, anomalies []Entry) {
+	leftMap := make(map[string]Entry, len(left))
+	for _, e := range left {
+		leftMap[e.FullId] = e
+	}
+	rightMap := make(map[string]Entry, len(right))
+	for _, e := range right {
+		rightMap[e.FullId] = e
+	}
+	for _, l := range left {
+		if r, ok := rightMap[l.FullId]; !ok {
+			leftOnly = append(leftOnly, l)
 		} else {
-			key := e.FirstName + "|" + e.LastName
-			keyMap[key] = append(keyMap[key], e)
+			both = append(both, l)
+			if diff := deep.Equal(l, r); diff != nil {
+				anomalies = append(anomalies, r)
+				log.Printf("Uid %s diff: %v", l.Uid, diff)
+			}
 		}
 	}
-	results := make([]Entry, 0)
-	for _, v := range keyMap {
-		if len(v) != 2 {
-			continue
-		}
-		e1, e2 := v[0], v[1]
-		if e1.FirstName != e2.FirstName || e1.LastName != e2.LastName {
-			continue
-		}
-		if diff := deep.Equal(e1.Emails, e2.Emails); diff != nil {
-			continue
-		}
-		t1, err1 := ExtractUid(e1.Uid)
-		t2, err2 := ExtractUid(e2.Uid)
-		if err1 != nil || err2 != nil {
-			continue
-		}
-		if t1+offset == t2 {
-			results = append(results, e2)
-		} else if t2+offset == t1 {
-			results = append(results, e1)
-		}
-	}
-	return results
+	return
 }
 
 func FindWithoutPhones(entries []Entry) []Entry {
@@ -86,16 +73,18 @@ func FindWithoutPhones(entries []Entry) []Entry {
 	return results
 }
 
-func ExtractUid(uid string) (int64, error) {
+func ExtractUid(uid string) (string, int64) {
 	reBig := regexp.MustCompile(`\A.*_uid_([0-9]+)\z`)
 	bigMatch := reBig.FindStringSubmatch(uid)
 	if len(bigMatch) > 0 {
-		return strconv.ParseInt(bigMatch[1], 10, 64)
+		i, _ := strconv.ParseInt(bigMatch[1], 10, 64)
+		return bigMatch[1], i
 	}
-	reDigits := regexp.MustCompile(`\A[0-9]+\z`)
+	reDigits := regexp.MustCompile(`\A([0-9]+)\z`)
 	digitMatch := reDigits.FindStringSubmatch(uid)
 	if len(digitMatch) > 0 {
-		return strconv.ParseInt(digitMatch[1], 10, 64)
+		i, _ := strconv.ParseInt(digitMatch[1], 10, 64)
+		return digitMatch[1], i
 	}
-	return 0, errors.New("invalid uid")
+	panic(fmt.Errorf("invalid UID found in contact: %s", uid))
 }

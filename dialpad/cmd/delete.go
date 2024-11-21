@@ -24,9 +24,9 @@ See the flags for the details of the criteria.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Default().SetFlags(0)
 		drCount, _ := cmd.Flags().GetCount("dry-run")
-		offset, _ := cmd.Flags().GetInt64("duplicate-offset")
+		fromList, _ := cmd.Flags().GetString("from-list")
 		wpCount, _ := cmd.Flags().GetCount("without-phones")
-		deleteContacts(drCount > 0, offset, wpCount > 0)
+		deleteContacts(drCount > 0, fromList, wpCount > 0)
 	},
 }
 
@@ -35,46 +35,60 @@ func init() {
 
 	deleteCmd.Args = cobra.ExactArgs(0)
 	deleteCmd.Flags().CountP("dry-run", "d", "Don't delete, just report what would be deleted")
-	deleteCmd.Flags().Int64("duplicate-offset", 0, "Delete duplicates with UIDs offset by some value")
+	deleteCmd.Flags().String("from-list", "", "Delete duplicates with UIDs offset from master")
 	deleteCmd.Flags().Count("without-phones", "Delete contacts that have no phone numbers")
-	deleteCmd.MarkFlagsOneRequired("duplicate-offset", "without-phones")
-	deleteCmd.MarkFlagsMutuallyExclusive("duplicate-offset", "without-phones")
+	deleteCmd.MarkFlagsOneRequired("from-list", "without-phones")
+	deleteCmd.MarkFlagsMutuallyExclusive("from-list", "without-phones")
 }
 
-func deleteContacts(dryRun bool, offset int64, withoutPhones bool) {
+func deleteContacts(dryRun bool, fromList string, withoutPhones bool) {
 	err := storage.PushConfig("")
 	if err != nil {
 		log.Fatalf("You must have a .env file containg the Dialpad API key")
 	}
 	defer storage.PopConfig()
-	entries, err := contacts.ListContacts("")
-	if err != nil {
-		log.Fatalf("Download was interrupted: %v", err)
-	} else {
-		log.Printf("Found %d contacts to clean", len(entries))
-	}
-	if offset != 0 {
-		dupes := contacts.FindOffsetDuplicates(entries, offset)
-		log.Printf("Found %d duplicate contacts with offset %d", len(dupes), offset)
-		if !dryRun {
-			err := contacts.DeleteContacts(dupes)
-			if err != nil {
-				log.Fatalf("Failed to delete a contact: %v", err)
-			} else {
-				log.Printf("Deleted %d duplicate contacts", len(dupes))
+	if fromList != "" {
+		entries, err := contacts.ImportContacts(fromList)
+		if err != nil {
+			log.Fatalf("Error importing contacts: %v", err)
+		}
+		log.Printf("Found %d contacts to delete", len(entries))
+		if dryRun {
+			log.Printf("Not deleting contacts since dry-run was specified")
+			return
+		}
+		errs := contacts.DeleteContacts(entries)
+		if errs != nil {
+			log.Printf("Failed to delete %d contacts:", len(errs))
+			for _, err := range errs {
+				log.Printf("--> %v", err)
 			}
 		}
+		log.Printf("Deleted %d contacts", len(entries)-len(errs))
 	}
 	if withoutPhones {
+		entries, errs := contacts.ListContacts("")
+		if errs != nil {
+			log.Printf("Dialpad download errors:")
+			for _, err := range errs {
+				log.Printf("--> %v", err)
+			}
+			log.Fatalf("Can't continue with an incomplete list of contacts")
+		}
+		log.Printf("Found %d contacts to inspect", len(entries))
 		wps := contacts.FindWithoutPhones(entries)
 		log.Printf("Found %d contacts without phone numbers", len(wps))
-		if !dryRun {
-			err := contacts.DeleteContacts(wps)
-			if err != nil {
-				log.Fatalf("Failed to delete a contact: %v", err)
-			} else {
-				log.Printf("Deleted %d contacts without phones", len(wps))
+		if dryRun {
+			log.Printf("Not deleting contacts since dry-run was specified")
+			return
+		}
+		errs = contacts.DeleteContacts(wps)
+		if errs != nil {
+			log.Printf("Failed to delete %d contacts:", len(errs))
+			for _, err := range errs {
+				log.Printf("--> %v", err)
 			}
 		}
+		log.Printf("Deleted %d contacts without phones", len(entries)-len(errs))
 	}
 }

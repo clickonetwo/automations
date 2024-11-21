@@ -13,9 +13,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"golang.org/x/time/rate"
+
+	"github.com/schollz/progressbar/v3"
 
 	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
@@ -27,25 +28,24 @@ var (
 	dialPadDeleteClient = NewRLHTTPClient(1200, 60)
 )
 
-type listEntry struct {
-	Entry
-	Id string `json:"id"`
-}
-
 type entryPage struct {
-	Cursor string      `json:"cursor"`
-	Items  []listEntry `json:"items"`
+	Cursor string  `json:"cursor"`
+	Items  []Entry `json:"items"`
 }
 
-func ListContacts(accountId string) ([]Entry, error) {
+func ListContacts(accountId string) (results []Entry, errs []error) {
 	key := storage.GetConfig().DialpadApiKey
 	baseUrl := fmt.Sprintf("%s/contacts?limit=200&apikey=%s", dialpadApiRoot, key)
 	if accountId != "" {
 		baseUrl = fmt.Sprintf("%s&accountId=%s", baseUrl, accountId)
 	}
-	results := make([]Entry, 0)
 	cursor := ""
+	bar := progressbar.Default(-1, "Downloading contacts")
+	defer bar.Close()
 	for {
+		if len(errs) > 5 {
+			panic(fmt.Errorf("too many errors fetching contacts: %v", errs))
+		}
 		url := baseUrl
 		if cursor != "" {
 			url = fmt.Sprintf("%s&cursor=%s", url, cursor)
@@ -62,7 +62,9 @@ func ListContacts(accountId string) ([]Entry, error) {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode != 200 {
-			return results, fmt.Errorf("list contacts: status code: %d, body: %s", resp.StatusCode, body)
+			err := fmt.Errorf("status code: %d, body: %s", resp.StatusCode, body)
+			errs = append(errs, err)
+			continue
 		}
 		var result entryPage
 		err = json.Unmarshal(body, &result)
@@ -72,21 +74,29 @@ func ListContacts(accountId string) ([]Entry, error) {
 		if len(result.Items) == 0 {
 			break
 		}
+		_ = bar.Add(len(result.Items))
 		for _, entry := range result.Items {
-			entry.Entry.Uid = entry.Id
-			results = append(results, entry.Entry)
+			if entry.FullId == "" {
+				err := fmt.Errorf("no contact ID: %v", entry)
+				errs = append(errs, err)
+				continue
+			}
+			entry.Uid, _ = ExtractUid(entry.FullId)
+			results = append(results, entry)
 		}
 		cursor = result.Cursor
 		if cursor == "" {
 			break
 		}
 	}
-	return results, nil
+	return
 }
 
-func UpdateContacts(entries []Entry) error {
+func UpdateContacts(entries []Entry) (errs []error) {
 	key := storage.GetConfig().DialpadApiKey
 	url := fmt.Sprintf("%s/contacts?apikey=%s", dialpadApiRoot, key)
+	bar := progressbar.Default(int64(len(entries)))
+	defer bar.Close()
 	for _, entry := range entries {
 		body, err := json.Marshal(entry)
 		if err != nil {
@@ -101,17 +111,26 @@ func UpdateContacts(entries []Entry) error {
 		}
 		body, _ = io.ReadAll(resp.Body)
 		resp.Body.Close()
+		_ = bar.Add(1)
 		if resp.StatusCode != 200 {
-			return fmt.Errorf("contact: %v, status code: %d, body: %s", entry, resp.StatusCode, body)
+			err := fmt.Errorf("contact: %v, status code: %d, body: %s", entry, resp.StatusCode, body)
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return
 }
 
-func DeleteContacts(entries []Entry) error {
+func DeleteContacts(entries []Entry) (errs []error) {
 	key := storage.GetConfig().DialpadApiKey
+	bar := progressbar.Default(int64(len(entries)))
+	defer bar.Close()
 	for _, entry := range entries {
-		url := fmt.Sprintf("%s/contacts/%s?apikey=%s", dialpadApiRoot, entry.Uid, key)
+		if entry.FullId == "" {
+			err := fmt.Errorf("no full ID for contact: %v", entry)
+			errs = append(errs, err)
+			continue
+		}
+		url := fmt.Sprintf("%s/contacts/%s?apikey=%s", dialpadApiRoot, entry.FullId, key)
 		req, _ := http.NewRequest("DELETE", url, nil)
 		req.Header.Add("accept", "application/json")
 		resp, err := dialPadDeleteClient.Do(req)
@@ -120,11 +139,13 @@ func DeleteContacts(entries []Entry) error {
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
+		_ = bar.Add(1)
 		if resp.StatusCode != 200 {
-			return fmt.Errorf("contact id: %v, status code: %d, body: %s", entry.Uid, resp.StatusCode, body)
+			err := fmt.Errorf("contact id: %v, status code: %d, body: %s", entry.Uid, resp.StatusCode, body)
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return
 }
 
 // RLHTTPClient is rate-limited HTTP Client
@@ -136,9 +157,10 @@ type RLHTTPClient struct {
 }
 
 func NewRLHTTPClient(calls, seconds int) *RLHTTPClient {
+	limit := rate.Limit(calls) / rate.Limit(seconds)
 	return &RLHTTPClient{
 		client:  http.DefaultClient,
-		limiter: rate.NewLimiter(rate.Every(time.Duration(seconds)*time.Second), calls),
+		limiter: rate.NewLimiter(limit, 1),
 	}
 }
 

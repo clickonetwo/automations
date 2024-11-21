@@ -9,17 +9,23 @@ package contacts
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/badoux/checkmail"
 	mapset "github.com/deckarep/golang-set/v2"
 )
 
 var (
 	nonGeographicAreaCodes = mapset.NewSet(
-		"500", "521", "522", "523", "524", "525", "526", "527", "528", "529", "533", "544", "566", "577", "588",
+		"500", "511",
+		"521", "522", "523", "524", "525", "526", "527", "528", "529",
+		"532", "533", "535", "538",
+		"542", "543", "544", "545", "546", "547", "549",
+		"550", "552", "553", "554", "555", "556", "558",
+		"566", "569",
+		"576", "577", "578", "588", "589",
 	)
 	NoContent = errors.New("no content")
 )
@@ -119,10 +125,11 @@ func CanonicalizeEmail(email string) (string, error) {
 	if email == "" {
 		return "", NoContent
 	}
-	if err := checkmail.ValidateFormat(email); err != nil {
+	a, err := mail.ParseAddress(email)
+	if err != nil {
 		return "", fmt.Errorf("%v: %q", err, email)
 	}
-	return email, nil
+	return a.Address, nil
 }
 
 // ParseEmails takes a sequence of emails (separated by ',', ';', or '|')
@@ -174,9 +181,9 @@ func ParseNames(first, last string) (f string, l string, e error) {
 		e = fmt.Errorf("invalid first (%v) and last (%v) name", ef, el)
 		return
 	} else if ef != nil {
-		el = ef
+		f = l
 	} else if el != nil {
-		ef = el
+		l = f
 	}
 	return
 }
