@@ -23,6 +23,7 @@ var compareCmd = &cobra.Command{
 Use a flag to specify the type of comparison. See the flags for details.
 The output will vary depending on the type of comparison.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Default().SetFlags(0)
 		byId, _ := cmd.Flags().GetCount("by-id")
 		byNameAndPhone, _ := cmd.Flags().GetCount("by-name-and-phone")
 		if byId > 0 {
@@ -84,7 +85,7 @@ func compareById(left string, right string) {
 	}
 	if len(anomalies) > 0 {
 		anomaliesPath := strings.TrimSuffix(right, ".csv") + ".anomalies.csv"
-		if err := contacts.ExportContacts(anomalies, anomaliesPath); err != nil {
+		if err := contacts.ExportAnomalies(anomalies, anomaliesPath); err != nil {
 			log.Fatalf("Can't export to %q: %v", anomaliesPath, err)
 		}
 		log.Printf(
