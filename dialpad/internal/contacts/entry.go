@@ -24,6 +24,11 @@ type Entry struct {
 	Emails    []string `json:"emails"`
 }
 
+type Anomaly struct {
+	Entry
+	Diff []string
+}
+
 func DiffEntries(dialpad, local []Entry) (update []Entry, create []Entry) {
 	oldMap := make(map[string]Entry, len(dialpad))
 	for _, o := range dialpad {
@@ -40,7 +45,7 @@ func DiffEntries(dialpad, local []Entry) (update []Entry, create []Entry) {
 	return
 }
 
-func CompareById(left []Entry, right []Entry) (both []Entry, leftOnly []Entry, rightOnly []Entry, anomalies []Entry) {
+func CompareById(left, right []Entry) (both, leftOnly, rightOnly []Entry, anomalies []Anomaly) {
 	leftMap := make(map[string]Entry, len(left))
 	for _, e := range left {
 		leftMap[e.FullId] = e
@@ -55,10 +60,16 @@ func CompareById(left []Entry, right []Entry) (both []Entry, leftOnly []Entry, r
 		} else {
 			both = append(both, l)
 			if diff := deep.Equal(l, r); diff != nil {
-				anomalies = append(anomalies, r)
+				anomalies = append(anomalies, Anomaly{r, diff})
 				log.Printf("Uid %s diff: %v", l.Uid, diff)
 			}
 		}
+	}
+	for _, r := range right {
+		if _, ok := leftMap[r.FullId]; !ok {
+			rightOnly = append(rightOnly, r)
+		}
+		// both case already handled above
 	}
 	return
 }

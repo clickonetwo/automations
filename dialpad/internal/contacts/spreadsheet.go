@@ -22,8 +22,9 @@ import (
 )
 
 var (
-	ImportColumnNames = []string{"Creation Date", "First_Name", "Last_Name", "Phones", "Email"}
-	ExportColumnNames = []string{"Dialpad UID", "Creation Stamp", "First Name", "Last Name", "Phones", "Emails"}
+	ImportColumnNames  = []string{"Creation Date", "First_Name", "Last_Name", "Phones", "Email"}
+	ExportColumnNames  = []string{"Dialpad UID", "Creation Stamp", "First Name", "Last Name", "Phones", "Emails"}
+	AnomalyColumnNames = []string{"Creation Stamp", "First Name Diff", "Last Name Diff", "Phones Diff", "Emails Diff"}
 )
 
 func ParseContacts(path string, showErrors bool) ([]Entry, error) {
@@ -69,6 +70,42 @@ func ExportContacts(entries []Entry, path string) error {
 		phones := strings.Join(entry.Phones, ";")
 		emails := strings.Join(entry.Emails, ";")
 		if err = writer.Write([]string{entry.FullId, entry.Uid, entry.FirstName, entry.LastName, phones, emails}); err != nil {
+			log.Panicf("error writing record to csv: %v", err)
+		}
+	}
+	return nil
+}
+
+func ExportAnomalies(anomalies []Anomaly, path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	writer := csv.NewWriter(f)
+	defer writer.Flush()
+	if err = writer.Write(AnomalyColumnNames); err != nil {
+		log.Panicf("error writing record to csv: %v", err)
+	}
+	for _, anomaly := range anomalies {
+		var fd, ld string
+		var pd, ed []string
+		for _, d := range anomaly.Diff {
+			if strings.HasPrefix(d, "FirstName: ") {
+				fd = d[len("FirstName: "):]
+			} else if strings.HasPrefix(d, "LastName: ") {
+				ld = d[len("LastName: "):]
+			} else if strings.HasPrefix(d, "Phones.slice") {
+				pd = append(pd, d[len("Phones.slice"):])
+			} else if strings.HasPrefix(d, "Emails.slice") {
+				ed = append(ed, d[len("Emails.slice"):])
+			} else {
+				log.Panicf("Diff entry not understood: %v", d)
+			}
+		}
+		phones := strings.Join(pd, ";")
+		emails := strings.Join(ed, ";")
+		if err = writer.Write([]string{anomaly.Uid, fd, ld, phones, emails}); err != nil {
 			log.Panicf("error writing record to csv: %v", err)
 		}
 	}
