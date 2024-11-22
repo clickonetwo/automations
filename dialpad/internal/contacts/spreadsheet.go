@@ -25,6 +25,7 @@ var (
 	ImportColumnNames  = []string{"Creation Date", "First_Name", "Last_Name", "Phones", "Email"}
 	ExportColumnNames  = []string{"Dialpad UID", "Creation Stamp", "First Name", "Last Name", "Phones", "Emails"}
 	AnomalyColumnNames = []string{"Creation Stamp", "First Name Diff", "Last Name Diff", "Phones Diff", "Emails Diff"}
+	UidColumnNames     = []string{"Left ID", "Right ID", "Primary Phone", "First Name", "Last Name"}
 )
 
 func ParseContacts(path string, showErrors bool) ([]Entry, error) {
@@ -70,6 +71,25 @@ func ExportContacts(entries []Entry, path string) error {
 		phones := strings.Join(entry.Phones, ";")
 		emails := strings.Join(entry.Emails, ";")
 		if err = writer.Write([]string{entry.FullId, entry.Uid, entry.FirstName, entry.LastName, phones, emails}); err != nil {
+			log.Panicf("error writing record to csv: %v", err)
+		}
+	}
+	return nil
+}
+
+func ExportUIDs(entries [][]string, path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	writer := csv.NewWriter(f)
+	defer writer.Flush()
+	if err = writer.Write(UidColumnNames); err != nil {
+		log.Panicf("error writing record to csv: %v", err)
+	}
+	for _, entry := range entries {
+		if err = writer.Write(entry); err != nil {
 			log.Panicf("error writing record to csv: %v", err)
 		}
 	}

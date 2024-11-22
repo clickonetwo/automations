@@ -74,6 +74,31 @@ func CompareById(left, right []Entry) (both, leftOnly, rightOnly []Entry, anomal
 	return
 }
 
+func FindOffsetDuplicates(left, right []Entry, offset int64) (leftDupes, rightDupes [][]string) {
+	// we sort the inputs so self-comparisons always find left < right
+	telMap := make(map[string][]Entry, len(left))
+	for _, e := range left {
+		telMap[e.Phones[0]] = append(telMap[e.Phones[0]], e)
+	}
+	for _, r := range right {
+		for _, l := range telMap[r.Phones[0]] {
+			if l.FirstName != r.FirstName || l.LastName != r.LastName {
+				continue
+			}
+			_, li := ExtractUid(l.FullId)
+			_, ri := ExtractUid(r.FullId)
+			if li+offset == ri {
+				rightDupes = append(rightDupes, []string{l.FullId, r.FullId, l.Phones[0], l.FirstName, l.LastName})
+				break
+			} else if ri+offset == li {
+				leftDupes = append(leftDupes, []string{l.FullId, r.FullId, l.Phones[0], l.FirstName, l.LastName})
+				break
+			}
+		}
+	}
+	return
+}
+
 func FindWithoutPhones(entries []Entry) []Entry {
 	results := make([]Entry, 0)
 	for _, entry := range entries {

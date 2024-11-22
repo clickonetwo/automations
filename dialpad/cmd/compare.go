@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -26,10 +27,13 @@ The output will vary depending on the type of comparison.`,
 		log.Default().SetFlags(0)
 		byId, _ := cmd.Flags().GetCount("by-id")
 		byNameAndPhone, _ := cmd.Flags().GetCount("by-name-and-phone")
+		byOffset, _ := cmd.Flags().GetInt64("by-offset")
 		if byId > 0 {
 			compareById(args[0], args[1])
 		} else if byNameAndPhone > 0 {
 			compareByNameAndPhone(args[0], args[1])
+		} else if byOffset != 0 {
+			compareByOffset(args[0], args[1], byOffset)
 		} else {
 			log.Fatalf("You must specify a type of comparison.")
 		}
@@ -42,8 +46,9 @@ func init() {
 	compareCmd.Args = cobra.ExactArgs(2)
 	compareCmd.Flags().Count("by-id", "Compare contacts by their unique ID")
 	compareCmd.Flags().Count("by-name-and-phone", "Compare contacts by their name and primary phone")
-	compareCmd.MarkFlagsOneRequired("by-id", "by-name-and-phone")
-	compareCmd.MarkFlagsMutuallyExclusive("by-id", "by-name-and-phone")
+	compareCmd.Flags().Int64("by-offset", 0, "Find identical contacts with UID offset this much")
+	compareCmd.MarkFlagsOneRequired("by-id", "by-name-and-phone", "by-offset")
+	compareCmd.MarkFlagsMutuallyExclusive("by-id", "by-name-and-phone", "by-offset")
 }
 
 func compareById(left string, right string) {
@@ -97,4 +102,50 @@ func compareById(left string, right string) {
 
 func compareByNameAndPhone(_ string, _ string) {
 
+}
+
+func compareByOffset(left, right string, offset int64) {
+	l, err := contacts.ImportContacts(left)
+	if err != nil {
+		log.Fatalf("Can't import from %q: %v", left, err)
+	}
+	r := l
+	if left != right {
+		r, err = contacts.ImportContacts(right)
+		if err != nil {
+			log.Fatalf("Can't import from %q: %v", right, err)
+		}
+	}
+	leftDupes, rightDupes := contacts.FindOffsetDuplicates(l, r, offset)
+	if left != right {
+		if len(leftDupes) > 0 {
+			dupesPath := strings.TrimSuffix(left, ".csv") + fmt.Sprintf(".by-offset-%d.csv", offset)
+			if err := contacts.ExportUIDs(leftDupes, dupesPath); err != nil {
+				log.Fatalf("Can't export to %q: %v", dupesPath, err)
+			}
+			log.Printf("The UIDs of %d left-greater-than-right matches exported to %q", len(leftDupes), dupesPath)
+		} else {
+			log.Printf("There were no matching contacts whose UID in right was %d more than in left", offset)
+		}
+		if len(rightDupes) > 0 {
+			dupesPath := strings.TrimSuffix(right, ".csv") + fmt.Sprintf(".by-offset-%d.csv", offset)
+			if err := contacts.ExportUIDs(rightDupes, dupesPath); err != nil {
+				log.Fatalf("Can't export to %q: %v", dupesPath, err)
+			}
+			log.Printf("The UIDs of %d right-greater-than-left matches exported to %q", len(rightDupes), dupesPath)
+		} else {
+			log.Printf("There were no matching contacts whose UID in left was %d more than in right", offset)
+		}
+	} else {
+		// self-compare, dupe-lists are identical
+		if len(leftDupes) > 0 {
+			dupesPath := strings.TrimSuffix(left, ".csv") + fmt.Sprintf(".self-by-offset-%d.csv", offset)
+			if err := contacts.ExportUIDs(leftDupes, dupesPath); err != nil {
+				log.Fatalf("Can't export to %q: %v", dupesPath, err)
+			}
+			log.Printf("The UIDs of %d matches with offset UIDs exported to %q", len(leftDupes), dupesPath)
+		} else {
+			log.Printf("There were no matching contacts whose UIDs differed by %d", offset)
+		}
+	}
 }
