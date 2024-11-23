@@ -25,7 +25,7 @@ func init() {
 	PT = loc
 }
 
-func RequestForm(phone string, events []SmsEvent) string {
+func RequestForm(phone string, events []SmsEvent) []byte {
 	titlePhone := ""
 	if phone != "" {
 		titlePhone = " with " + html.EscapeString(phone)
@@ -37,6 +37,15 @@ func RequestForm(phone string, events []SmsEvent) string {
 	<style>
 		body {
 			font-family: sans-serif;
+		}
+		form {
+			max-width: 400px;
+			margin: 10px auto;
+			padding: 20px;
+			background-color: #f0f0f0;
+			box-shadow: 0px 0px 10px #888888;
+			text-align: center;
+			align: center;
 		}
 		.message {
 			color: red;
@@ -68,13 +77,17 @@ func RequestForm(phone string, events []SmsEvent) string {
 	page := `<!DOCTYPE html><html>` + head + `<body>`
 	page += form
 	if len(events) == 0 {
-		page += fmt.Sprintf(`<p style="message">No text history with %s</p>`, phone)
+		if phone != "" {
+			page += fmt.Sprintf(`<p class="message">You have no text history with %s</p>`, phone)
+		} else {
+			page += fmt.Sprintf(`<p class="message">Please specify a phone number</p>`)
+		}
 	} else {
 		page += threadTable(phone, events)
 	}
-	page += `<p style="logout"><a href="/logout">Logout</a></p>`
+	page += `<p class="logout"><a href="/logout">Logout</a></p>`
 	page += `</body></html>`
-	return page
+	return []byte(page)
 }
 
 func threadTable(phone string, events []SmsEvent) string {
@@ -114,7 +127,7 @@ func threadTable(phone string, events []SmsEvent) string {
 	return tableHdr + tableBody + tableFooter
 }
 
-func ServerErrorForm(phone string) string {
+func ServerErrorForm(phone string) []byte {
 	head := `
 <head>
 	<title>Error</title>
@@ -140,8 +153,8 @@ func ServerErrorForm(phone string) string {
 	page += `<p class="normal">Errors like this are usually temporary.</p>`
 	page += fmt.Sprintf(`<p class="normal">To try your query again,
 				<a href="/history?phone=%s">click here</a>.</p>`, phone)
-	page += `<p style="normal"></p>`
-	page += `<p style="normal"><a href="/logout">Logout</a></p>`
+	page += `<p class="normal"></p>`
+	page += `<p class="normal"><a href="/logout">Logout</a></p>`
 	page += `</body></html>`
-	return page
+	return []byte(page)
 }

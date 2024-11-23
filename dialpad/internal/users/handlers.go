@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
 var (
@@ -36,33 +38,35 @@ func CheckLoginMiddleware(c *gin.Context) {
 }
 
 func LoginHandler(c *gin.Context) {
-	email := c.PostForm("username")
-	userId := c.PostForm("password")
+	secure := storage.GetConfig().Name != "development"
+	email := c.Query("username")
+	userId := c.Query("password")
 	if email == "" && userId == "" {
 		var message string
 		if userId, _ := c.Cookie(AuthCookieName); userId != "" {
-			c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
+			c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
 			message = "Please log in again."
 		}
-		c.String(http.StatusOK, "%s", LoginForm(message))
+		c.Data(http.StatusOK, "text/html", LoginForm(message))
 		return
 	}
 	if email == "" || userId == "" {
-		c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
-		c.String(http.StatusOK, "%s", LoginForm(dataMissingMsg))
+		c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
+		c.Data(http.StatusOK, "text/html", LoginForm(dataMissingMsg))
 		return
 	}
 	if e, err := CheckAuth(userId, "reader"); err == nil && strings.ToLower(e) == strings.ToLower(email) {
-		c.SetCookie(AuthCookieName, userId, loginAge, "/", "", true, true)
-		c.Redirect(http.StatusFound, "/history")
+		c.SetCookie(AuthCookieName, userId, loginAge, "/", "", secure, true)
+		c.Data(http.StatusOK, "text/html", LoginSuccessForm())
 	} else {
-		c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
-		c.String(http.StatusOK, "%s", LoginForm(badDataMsg))
+		c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
+		c.Data(http.StatusOK, "text/html", LoginForm(badDataMsg))
 	}
 }
 
 func LogoutHandler(c *gin.Context) {
-	c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
+	secure := storage.GetConfig().Name != "development"
+	c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
 	c.Redirect(http.StatusFound, "/login")
 }
 

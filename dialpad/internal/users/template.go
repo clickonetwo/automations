@@ -10,7 +10,7 @@ import (
 	"html"
 )
 
-func LoginForm(message string) string {
+func LoginForm(message string) []byte {
 	head := `
 <head>
     <title>Dialpad History Login</title>
@@ -56,7 +56,7 @@ func LoginForm(message string) string {
 	messageStart := `<p class="message">`
 	messageEnd := `</p>`
 	form := `
-        <form action="/login" method="POST">
+        <form action="/login" method="GET">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required><br>
             <label for="password">Password:</label>
@@ -66,11 +66,34 @@ func LoginForm(message string) string {
 	bodyBottom := `
     </div>
 </body>
-</html>
 `
 	messageBox := "\n"
 	if message != "" {
 		messageBox += messageStart + html.EscapeString(message) + messageEnd + "\n"
 	}
-	return `<!DOCTYPE html><html>` + head + bodyTop + messageBox + form + bodyBottom + `</html>`
+	page := `<!DOCTYPE html><html>` + head + bodyTop + messageBox + form + bodyBottom + `</html>`
+	return []byte(page)
+}
+
+func LoginSuccessForm() []byte {
+	page := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Login successful</title>
+		<meta charset="utf-8">
+		<meta http-equiv="refresh" content="0;url=/history" />
+		<style type="text/css">
+			p {
+				font-family: sans-serif;
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body>
+		<p>You have successfully logged in!
+			<a href="/history">Click here</a> if you are not redirected in a few seconds.</p>
+	</body>
+</html>`
+	return []byte(page)
 }

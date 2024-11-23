@@ -21,15 +21,15 @@ var (
 func RequestHandler(c *gin.Context) {
 	phone := c.Query("phone")
 	if phone == "" {
-		c.String(http.StatusOK, "%s", RequestForm("", nil))
+		c.Data(http.StatusOK, "text/html", RequestForm("", nil))
 		return
 	}
 	userId, _ := c.Cookie(users.AuthCookieName)
 	email, err := users.CheckAuth(userId, "reader")
 	if err != nil {
-		c.String(http.StatusOK, "%s", ServerErrorForm(phone))
+		c.Data(http.StatusOK, "text/html", ServerErrorForm(phone))
 		return
 	}
 	thread := SelectThreadByEmailPhone(email, phone, EventHistory)
-	c.String(http.StatusOK, "%s", RequestForm(phone, thread))
+	c.Data(http.StatusOK, "text/html", RequestForm(phone, thread))
 }
