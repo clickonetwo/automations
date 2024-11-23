@@ -30,6 +30,9 @@ func FormatThread(phone string, events []SmsEvent) string {
 <head>
 	<meta charset="utf-8" />
 	<style>
+		body {
+			font-family: sans-serif;
+		}
 		table {
 			border: 1px solid black;
 		}

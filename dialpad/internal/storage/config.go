@@ -21,6 +21,8 @@ type Environment struct {
 	DialpadApiKey        string
 	DialpadWebhookSecret string
 	HerokuHostUrl        string
+	MasterAdminId        string
+	MasterAdminEmail     string
 }
 
 var (
@@ -31,6 +33,8 @@ var (
 		DialpadApiKey:        "",
 		DialpadWebhookSecret: "",
 		HerokuHostUrl:        "http://127.0.0.1:8080",
+		MasterAdminId:        "dan@clickonetwo.io",
+		MasterAdminEmail:     "dan@clickonetwo.io",
 	}
 	loadedConfig = testConfig
 	configStack  []Environment
@@ -104,6 +108,8 @@ func pushEnvConfig(filename string) error {
 		DialpadApiKey:        os.Getenv("DIALPAD_API_KEY"),
 		DialpadWebhookSecret: os.Getenv("DIALPAD_WEBHOOK_SECRET"),
 		HerokuHostUrl:        os.Getenv("HEROKU_HOST_URL"),
+		MasterAdminId:        os.Getenv("MASTER_ADMIN_ID"),
+		MasterAdminEmail:     os.Getenv("MASTER_ADMIN_EMAIL"),
 	}
 	return nil
 }
