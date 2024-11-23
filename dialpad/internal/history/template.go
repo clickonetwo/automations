@@ -25,13 +25,26 @@ func init() {
 	PT = loc
 }
 
-func FormatThread(phone string, events []SmsEvent) string {
-	head := `
+func RequestForm(phone string, events []SmsEvent) string {
+	titlePhone := ""
+	if phone != "" {
+		titlePhone = " with " + html.EscapeString(phone)
+	}
+	head := fmt.Sprintf(`
 <head>
+	<title>SMS History %s</title>
 	<meta charset="utf-8" />
 	<style>
 		body {
 			font-family: sans-serif;
+		}
+		.message {
+			color: red;
+			text-align: center;
+		}
+		.logout {
+			text-align: center;
+			margin-top: 10px;
 		}
 		table {
 			border: 1px solid black;
@@ -45,15 +58,34 @@ func FormatThread(phone string, events []SmsEvent) string {
 		}
 	</style>
 </head>
-`
-	bodyTop := `<body><table>`
-	tableHdr := `
+`, titlePhone)
+	form := fmt.Sprintf(`
+<form action="/history" method="GET">
+	<label for="phone">Phone:</label>
+	<input type="text" id="phone" name="phone" value="%s" placeholder="+15106666687" required><br>
+	<button type="submit">Search</button>
+</form>`, phone)
+	page := `<!DOCTYPE html><html>` + head + `<body>`
+	page += form
+	if len(events) == 0 {
+		page += fmt.Sprintf(`<p style="message">No text history with %s</p>`, phone)
+	} else {
+		page += threadTable(phone, events)
+	}
+	page += `<p style="logout"><a href="/logout">Logout</a></p>`
+	page += `</body></html>`
+	return page
+}
+
+func threadTable(phone string, events []SmsEvent) string {
+	tableHdr := fmt.Sprintf(`
+<table>
 <tr>
-	<th style="width:40%">You</th>
-	<th style="width:55%">Client</th>
-	<th style="width:5%">Time</th>
-</tr>`
-	bodyFoot := `</table></body>`
+	<th style="width:"40%%">You</th>
+	<th style="width:"55%%">%s</th>
+	<th style="width:"5%%">When</th>
+</tr>`, html.EscapeString(phone))
+	tableFooter := `</table>`
 	var rows []string
 	for _, event := range events {
 		start := `<tr><td>`
@@ -79,6 +111,37 @@ func FormatThread(phone string, events []SmsEvent) string {
 		rows = append(rows, row)
 	}
 	tableBody := strings.Join(rows, "")
-	page := `<!DOCTYPE html><html>` + head + bodyTop + tableHdr + tableBody + bodyFoot + `</html>`
+	return tableHdr + tableBody + tableFooter
+}
+
+func ServerErrorForm(phone string) string {
+	head := `
+<head>
+	<title>Error</title>
+	<meta charset="utf-8" />
+	<style>
+		body {
+			font-family: sans-serif;
+		}
+		.message {
+			color: red;
+			text-align: center;
+		}
+		.normal {
+			text-align: center;
+			margin-top: 10px;
+		}
+	</style>
+</head>
+`
+	page := `<!DOCTYPE html><html>` + head + `<body>`
+	page += fmt.Sprintf(`<h1>Error fetching history for %s</h1>`, html.EscapeString(phone))
+	page += `<p class="message">Sorry, an unexpected error occurred fetching your SMS history.</p>`
+	page += `<p class="normal">Errors like this are usually temporary.</p>`
+	page += fmt.Sprintf(`<p class="normal">To try your query again,
+				<a href="/history?phone=%s">click here</a>.</p>`, phone)
+	page += `<p style="normal"></p>`
+	page += `<p style="normal"><a href="/logout">Logout</a></p>`
+	page += `</body></html>`
 	return page
 }

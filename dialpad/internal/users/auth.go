@@ -13,6 +13,21 @@ import (
 	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
+var (
+	AuthCookieName = "dialpad_history_user_id"
+)
+
+func ListUsers(capability string) map[string]string {
+	var userMap map[string]string
+	switch capability {
+	case "admin":
+		userMap, _ = Admins.IdsEmails()
+	case "reader":
+		userMap, _ = Readers.IdsEmails()
+	}
+	return userMap
+}
+
 func CheckAuth(userId, capability string) (string, error) {
 	env := storage.GetConfig()
 	if userId == env.MasterAdminId {

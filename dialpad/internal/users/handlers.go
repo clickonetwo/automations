@@ -11,14 +11,76 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func UploadUsers(c *gin.Context) {
-	userId := c.Query("user")
+var (
+	dataMissingMsg = "You must specify both username and password"
+	badDataMsg     = "Invalid credentials. Please try again."
+	loginAge       = 365 * 24 * 60 * 60 // 1 year
+)
+
+func CheckLoginMiddleware(c *gin.Context) {
+	userId, _ := c.Cookie(AuthCookieName)
+	if userId == "" {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+	if _, err := CheckAuth(userId, "reader"); err == nil {
+		c.Next()
+	} else {
+		c.Redirect(http.StatusFound, "/login")
+	}
+}
+
+func LoginHandler(c *gin.Context) {
+	email := c.PostForm("username")
+	userId := c.PostForm("password")
+	if email == "" && userId == "" {
+		var message string
+		if userId, _ := c.Cookie(AuthCookieName); userId != "" {
+			c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
+			message = "Please log in again."
+		}
+		c.String(http.StatusOK, "%s", LoginForm(message))
+		return
+	}
+	if email == "" || userId == "" {
+		c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
+		c.String(http.StatusOK, "%s", LoginForm(dataMissingMsg))
+		return
+	}
+	if e, err := CheckAuth(userId, "reader"); err == nil && strings.ToLower(e) == strings.ToLower(email) {
+		c.SetCookie(AuthCookieName, userId, loginAge, "/", "", true, true)
+		c.Redirect(http.StatusFound, "/history")
+	} else {
+		c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
+		c.String(http.StatusOK, "%s", LoginForm(badDataMsg))
+	}
+}
+
+func LogoutHandler(c *gin.Context) {
+	c.SetCookie(AuthCookieName, "", -1, "/", "", true, true)
+	c.Redirect(http.StatusFound, "/login")
+}
+
+func DownloadUsers(c *gin.Context) {
+	userId := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 	if _, err := CheckAuth(userId, "admin"); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "error": err.Error()})
+		return
+	}
+	userType := c.Param("type")
+	c.JSON(http.StatusOK, ListUsers(userType))
+}
+
+func UploadUsers(c *gin.Context) {
+	userId := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	if _, err := CheckAuth(userId, "admin"); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "error": err.Error()})
+		return
 	}
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {

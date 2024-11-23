@@ -11,14 +11,33 @@ import (
 	"testing"
 )
 
-func TestFormatThread(t *testing.T) {
+func TestHistoryForm(t *testing.T) {
 	events, err := ImportSmsEvents("../../local/texts-all.csv")
 	if err != nil {
 		t.Fatal(err)
 	}
 	thread := SelectThreadByEmailPhone("anuar.arriaga@oasislegalservices.org", "+14158234525", events)
-	page := FormatThread("+14158234525", thread)
-	err = os.WriteFile("../../local/test-thread.html", []byte(page), 0644)
+	page := RequestForm("+14158234525", thread)
+	err = os.WriteFile("../../local/test-thread-1.html", []byte(page), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	thread = SelectThreadByEmailPhone("anuar.arriaga@oasislegalservices.org", "+15109260499", events)
+	page = RequestForm("+14158234525", thread)
+	err = os.WriteFile("../../local/test-thread-2.html", []byte(page), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page = RequestForm("", nil)
+	err = os.WriteFile("../../local/test-thread-3.html", []byte(page), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHistoryServerError(t *testing.T) {
+	page := ServerErrorForm(`+15109260499`)
+	err := os.WriteFile("../../local/test-error-1.html", []byte(page), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,6 +16,8 @@ import (
 
 type Environment struct {
 	Name                 string
+	AgePublicKey         string
+	AgeSecretKey         string
 	DbUrl                string
 	DbKeyPrefix          string
 	DialpadApiKey        string
@@ -25,9 +27,12 @@ type Environment struct {
 	MasterAdminEmail     string
 }
 
+//goland:noinspection SpellCheckingInspection
 var (
 	testConfig = Environment{
 		Name:                 "test",
+		AgePublicKey:         "age1mefeyagknwrhpepv6xkggfqwhgzj53rmuqmntkktf9y4mxavys3sns6prp",
+		AgeSecretKey:         "AGE-SECRET-KEY-188SQQGWWCRCCYZ964VPDY5YGUCVL0QUEMEZ3TUV9AVJ2RY5G03QQE0PA38",
 		DbUrl:                "redis://",
 		DbKeyPrefix:          "t:",
 		DialpadApiKey:        "",
@@ -78,7 +83,7 @@ func pushEnvConfig(filename string) error {
 	var d string
 	var err error
 	if filename == "" {
-		if d, err = findEnvFile(".env.vault", true); err == nil {
+		if d, err = FindEnvFile(".env.vault", true); err == nil {
 			if d == "" {
 				err = godotenvvault.Overload()
 			} else {
@@ -93,7 +98,7 @@ func pushEnvConfig(filename string) error {
 			}
 		}
 	} else {
-		if d, err = findEnvFile(filename, false); err == nil {
+		if d, err = FindEnvFile(filename, false); err == nil {
 			err = godotenvvault.Overload(d + filename)
 		}
 	}
@@ -103,6 +108,8 @@ func pushEnvConfig(filename string) error {
 	configStack = append(configStack, loadedConfig)
 	loadedConfig = Environment{
 		Name:                 os.Getenv("ENVIRONMENT_NAME"),
+		AgePublicKey:         os.Getenv("AGE_PUBLIC_KEY"),
+		AgeSecretKey:         os.Getenv("AGE_SECRET_KEY"),
 		DbUrl:                os.Getenv("REDIS_URL"),
 		DbKeyPrefix:          os.Getenv("DB_KEY_PREFIX"),
 		DialpadApiKey:        os.Getenv("DIALPAD_API_KEY"),
@@ -123,7 +130,7 @@ func PopConfig() {
 	return
 }
 
-func findEnvFile(name string, fallback bool) (string, error) {
+func FindEnvFile(name string, fallback bool) (string, error) {
 	for i := range 5 {
 		d := ""
 		for range i {

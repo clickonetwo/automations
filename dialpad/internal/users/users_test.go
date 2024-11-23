@@ -7,6 +7,7 @@
 package users
 
 import (
+	"os"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -38,4 +39,17 @@ func TestLoadUsers(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("Loaded both admins and readers to database")
+}
+
+func TestLoginForm(t *testing.T) {
+	page := LoginForm("This is a test message.")
+	err := os.WriteFile("../../local/test-login-1.html", []byte(page), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page = LoginForm("")
+	err = os.WriteFile("../../local/test-login-2.html", []byte(page), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

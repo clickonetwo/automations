@@ -16,10 +16,12 @@ import (
 	"strings"
 	"time"
 
+	"filippo.io/age"
 	"github.com/go-test/deep"
 	"github.com/schollz/progressbar/v3"
 
 	"github.com/clickonetwo/automations/dialpad/internal/contacts"
+	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
 var (
@@ -42,6 +44,41 @@ func ImportSmsEvents(path string) ([]SmsEvent, error) {
 		return nil, fmt.Errorf("unexpected column names: %v", record)
 	}
 	return parseSmsEvents(reader)
+}
+
+func ImportEncryptedSmsEvents(path string) ([]SmsEvent, error) {
+	id, err := age.ParseX25519Identity(storage.GetConfig().AgeSecretKey)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	df, err := age.Decrypt(f, id)
+	if err != nil {
+		return nil, err
+	}
+	reader := contacts.BOMAwareCSVReader(df)
+	record, err := reader.Read()
+	if diff := deep.Equal(record, SmsImportHeaders); diff != nil {
+		return nil, fmt.Errorf("unexpected column names: %v", record)
+	}
+	return parseSmsEvents(reader)
+}
+
+func LoadSmsEvents() error {
+	dir, err := storage.FindEnvFile("data", true)
+	if err != nil {
+		return err
+	}
+	events, err := ImportEncryptedSmsEvents(dir + "data/all-events.csv.age")
+	if err != nil {
+		return err
+	}
+	EventHistory = events
+	return nil
 }
 
 func parseSmsEvents(reader *csv.Reader) ([]SmsEvent, error) {

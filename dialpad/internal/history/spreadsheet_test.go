@@ -8,6 +8,8 @@ package history
 
 import (
 	"testing"
+
+	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
 func TestImportSmsEvents(t *testing.T) {
@@ -17,6 +19,25 @@ func TestImportSmsEvents(t *testing.T) {
 	}
 	if len(result) != 158113 {
 		t.Errorf("Expected %d rows, got %d", 0, len(result))
+	}
+}
+
+func TestImportEncryptedSmsEvents(t *testing.T) {
+	result, err := ImportEncryptedSmsEvents("../../local/texts-all.csv.age")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 158113 {
+		t.Errorf("Expected %d rows, got %d", 0, len(result))
+	}
+	err = storage.PushConfig("production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer storage.PopConfig()
+	err = LoadSmsEvents()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
