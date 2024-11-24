@@ -18,7 +18,7 @@ import (
 	"github.com/clickonetwo/automations/dialpad/internal/contacts"
 )
 
-func importUserIdsEmails(path string) (map[string]string, error) {
+func ImportUserIdsEmails(path string) (map[string]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -30,6 +30,27 @@ func importUserIdsEmails(path string) (map[string]string, error) {
 		return nil, fmt.Errorf("unexpected column names: %v", record)
 	}
 	return parseIdsEmails(reader)
+}
+
+func ExportUserIdsEmails(path string, userMap map[string]string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	defer w.Flush()
+	err = w.Write([]string{"target_id", "type", "primary_email"})
+	if err != nil {
+		return err
+	}
+	for k, v := range userMap {
+		err = w.Write([]string{k, "user", v})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func parseIdsEmails(reader *csv.Reader) (map[string]string, error) {

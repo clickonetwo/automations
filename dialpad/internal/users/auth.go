@@ -49,7 +49,7 @@ func CheckAuth(userId, capability string) (string, error) {
 	}
 	email, ok := userMap[userId]
 	if !ok {
-		return "", errors.New("forbidden")
+		return "", errors.New("insufficient capabilities")
 	}
 	return email, nil
 }

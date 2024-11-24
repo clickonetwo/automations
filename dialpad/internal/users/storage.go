@@ -33,6 +33,9 @@ func (l UserList) IdsEmails() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if val == "" {
+		return nil, nil
+	}
 	var result map[string]string
 	err = json.Unmarshal([]byte(val), &result)
 	if err != nil {

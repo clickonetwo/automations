@@ -72,6 +72,10 @@ func LogoutHandler(c *gin.Context) {
 
 func DownloadUsers(c *gin.Context) {
 	userId := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	if userId == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "error": "Provide authorization"})
+		return
+	}
 	if _, err := CheckAuth(userId, "admin"); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "error": err.Error()})
 		return
@@ -82,6 +86,10 @@ func DownloadUsers(c *gin.Context) {
 
 func UploadUsers(c *gin.Context) {
 	userId := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	if userId == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "error": "Provide authorization"})
+		return
+	}
 	if _, err := CheckAuth(userId, "admin"); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "error": err.Error()})
 		return

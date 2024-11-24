@@ -14,7 +14,7 @@ import (
 )
 
 func TestLoadUsers(t *testing.T) {
-	idsEmails, err := importUserIdsEmails("../../local/Oasis-admins.csv")
+	idsEmails, err := ImportUserIdsEmails("../../local/Oasis-admins.csv")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestLoadUsers(t *testing.T) {
 	if diff := deep.Equal(cpy, idsEmails); diff != nil {
 		t.Error(diff)
 	}
-	idsEmails, err = importUserIdsEmails("../../local/Oasis-readers.csv")
+	idsEmails, err = ImportUserIdsEmails("../../local/Oasis-readers.csv")
 	if err != nil {
 		t.Fatal(err)
 	}
