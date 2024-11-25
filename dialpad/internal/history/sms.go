@@ -8,6 +8,9 @@ package history
 
 import (
 	"slices"
+	"strings"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 type SmsEvent struct {
@@ -35,4 +38,21 @@ func SelectThreadByEmailPhone(email, phone string, events []SmsEvent) []SmsEvent
 		}
 	}
 	return es
+}
+
+func SelectPhonesByEmail(email string, events []SmsEvent) []string {
+	ps := mapset.NewSet[string]()
+	for _, event := range events {
+		if event.Email == email {
+			if strings.HasPrefix(event.FromPhone, "+") {
+				ps.Add(event.FromPhone)
+			}
+			for _, phone := range event.ToPhones {
+				if strings.HasPrefix(phone, "+") {
+					ps.Add(phone)
+				}
+			}
+		}
+	}
+	return ps.ToSlice()
 }

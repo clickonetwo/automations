@@ -20,7 +20,6 @@ import (
 	"github.com/go-test/deep"
 	"github.com/schollz/progressbar/v3"
 
-	"github.com/clickonetwo/automations/dialpad/internal/contacts"
 	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
@@ -38,7 +37,7 @@ func ImportSmsEvents(path string) ([]SmsEvent, error) {
 		return nil, err
 	}
 	defer f.Close()
-	reader := contacts.BOMAwareCSVReader(f)
+	reader := storage.BOMAwareCSVReader(f)
 	record, err := reader.Read()
 	if diff := deep.Equal(record, SmsImportHeaders); diff != nil {
 		return nil, fmt.Errorf("unexpected column names: %v", record)
@@ -60,25 +59,12 @@ func ImportEncryptedSmsEvents(path string) ([]SmsEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	reader := contacts.BOMAwareCSVReader(df)
+	reader := storage.BOMAwareCSVReader(df)
 	record, err := reader.Read()
 	if diff := deep.Equal(record, SmsImportHeaders); diff != nil {
 		return nil, fmt.Errorf("unexpected column names: %v", record)
 	}
 	return parseSmsEvents(reader)
-}
-
-func LoadSmsEvents() error {
-	dir, err := storage.FindEnvFile("data", true)
-	if err != nil {
-		return err
-	}
-	events, err := ImportEncryptedSmsEvents(dir + "data/all-events.csv.age")
-	if err != nil {
-		return err
-	}
-	EventHistory = events
-	return nil
 }
 
 func parseSmsEvents(reader *csv.Reader) ([]SmsEvent, error) {

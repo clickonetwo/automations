@@ -82,7 +82,7 @@ func LoginSuccessForm() []byte {
 	<head>
 		<title>Login successful</title>
 		<meta charset="utf-8">
-		<meta http-equiv="refresh" content="0;url=/history" />
+		<meta http-equiv="refresh" content="0;url=/search" />
 		<style type="text/css">
 			p {
 				font-family: sans-serif;
@@ -92,7 +92,7 @@ func LoginSuccessForm() []byte {
 	</head>
 	<body>
 		<p>You have successfully logged in!
-			<a href="/history">Click here</a> if you are not redirected in a few seconds.</p>
+			<a href="/search">Click here</a> if you are not redirected in a few seconds.</p>
 	</body>
 </html>`
 	return []byte(page)

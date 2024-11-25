@@ -14,11 +14,11 @@ import (
 	"os"
 	"strings"
 
+	"filippo.io/age"
 	"github.com/go-test/deep"
 	"github.com/schollz/progressbar/v3"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/unicode"
-	"golang.org/x/text/transform"
+
+	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
 var (
@@ -34,7 +34,7 @@ func ParseContacts(path string, showErrors bool) ([]Entry, error) {
 		return nil, err
 	}
 	defer f.Close()
-	reader := BOMAwareCSVReader(f)
+	reader := storage.BOMAwareCSVReader(f)
 	record, err := reader.Read()
 	if diff := deep.Equal(record, ImportColumnNames); diff != nil {
 		return nil, fmt.Errorf("unexpected column names: %v", record)
@@ -48,7 +48,29 @@ func ImportContacts(path string) ([]Entry, error) {
 		return nil, err
 	}
 	defer f.Close()
-	reader := BOMAwareCSVReader(f)
+	reader := storage.BOMAwareCSVReader(f)
+	record, err := reader.Read()
+	if diff := deep.Equal(record, ExportColumnNames); diff != nil {
+		return nil, fmt.Errorf("unexpected column names: %v", record)
+	}
+	return loadRecords(reader)
+}
+
+func ImportEncryptedContacts(path string) ([]Entry, error) {
+	id, err := age.ParseX25519Identity(storage.GetConfig().AgeSecretKey)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	df, err := age.Decrypt(f, id)
+	if err != nil {
+		return nil, err
+	}
+	reader := storage.BOMAwareCSVReader(df)
 	record, err := reader.Read()
 	if diff := deep.Equal(record, ExportColumnNames); diff != nil {
 		return nil, fmt.Errorf("unexpected column names: %v", record)
@@ -231,16 +253,6 @@ func loadRecords(reader *csv.Reader) ([]Entry, error) {
 		result = append(result, entry)
 	}
 	return result, nil
-}
-
-// BOMAwareCSVReader will detect a UTF BOM (Byte Order Mark) at the
-// start of the data and transform to UTF8 accordingly.
-// If there is no BOM, it will read the data without any transformation.
-//
-// This code taken from [this StackOverflow answer](https://stackoverflow.com/a/76023436/558006).
-func BOMAwareCSVReader(reader io.Reader) *csv.Reader {
-	var transformer = unicode.BOMOverride(encoding.Nop.NewDecoder())
-	return csv.NewReader(transform.NewReader(reader, transformer))
 }
 
 func ordinal(i int, max int) string {

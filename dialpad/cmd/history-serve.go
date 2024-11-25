@@ -51,7 +51,10 @@ func serveHistory(envName string) {
 	if err != nil {
 		panic(err)
 	}
-	if err = history.LoadSmsEvents(); err != nil {
+	if err = history.LoadEventHistory(); err != nil {
+		panic(err)
+	}
+	if err = history.LoadAllContacts(); err != nil {
 		panic(err)
 	}
 	defer logger.Sync()
@@ -71,9 +74,10 @@ func serveHistory(envName string) {
 		})
 	})
 	r.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusFound, "/history")
+		c.Redirect(http.StatusFound, "/search")
 	})
 	r.GET("/history", users.CheckLoginMiddleware, history.RequestHandler)
+	r.GET("/search", users.CheckLoginMiddleware, history.SearchHandler)
 	r.GET("/login", users.LoginHandler)
 	r.GET("/logout", users.LogoutHandler)
 	r.GET("/users/:type", users.DownloadUsers)

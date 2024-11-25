@@ -9,6 +9,8 @@ package history
 import (
 	"os"
 	"testing"
+
+	"github.com/clickonetwo/automations/dialpad/internal/contacts"
 )
 
 func TestHistoryForm(t *testing.T) {
@@ -17,18 +19,18 @@ func TestHistoryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	thread := SelectThreadByEmailPhone("anuar.arriaga@oasislegalservices.org", "+14158234525", events)
-	page := RequestForm("+14158234525", thread)
+	page := RequestForm("Moises Someone", "+14158234525", thread)
 	err = os.WriteFile("../../local/test-thread-1.html", []byte(page), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 	thread = SelectThreadByEmailPhone("anuar.arriaga@oasislegalservices.org", "+15109260499", events)
-	page = RequestForm("+14158234525", thread)
+	page = RequestForm("Daniel Brotsky", "+15109260499", thread)
 	err = os.WriteFile("../../local/test-thread-2.html", []byte(page), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	page = RequestForm("", nil)
+	page = RequestForm(contacts.UnknownName, "+15109260499", nil)
 	err = os.WriteFile("../../local/test-thread-3.html", []byte(page), 0644)
 	if err != nil {
 		t.Fatal(err)
@@ -36,8 +38,18 @@ func TestHistoryForm(t *testing.T) {
 }
 
 func TestHistoryServerError(t *testing.T) {
-	page := ServerErrorForm(`+15109260499`)
-	err := os.WriteFile("../../local/test-error-1.html", []byte(page), 0644)
+	page := ServerErrorForm(`Daniel Brotsky`, `+15109260499`)
+	err := os.WriteFile("../../local/test-error-1.html", page, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page = ServerErrorForm(`{unknown}`, `+15109260499`)
+	err = os.WriteFile("../../local/test-error-2.html", page, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page = ServerErrorForm(``, `+15109260499`)
+	err = os.WriteFile("../../local/test-error-2.html", page, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}

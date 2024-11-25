@@ -15,7 +15,7 @@ import (
 
 	"github.com/schollz/progressbar/v3"
 
-	"github.com/clickonetwo/automations/dialpad/internal/contacts"
+	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
 func ImportUserIdsEmails(path string) (map[string]string, error) {
@@ -24,7 +24,7 @@ func ImportUserIdsEmails(path string) (map[string]string, error) {
 		return nil, err
 	}
 	defer f.Close()
-	reader := contacts.BOMAwareCSVReader(f)
+	reader := storage.BOMAwareCSVReader(f)
 	record, err := reader.Read()
 	if record[0] != "target_id" || record[1] != "type" || record[2] != "primary_email" {
 		return nil, fmt.Errorf("unexpected column names: %v", record)

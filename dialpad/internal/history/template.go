@@ -9,8 +9,11 @@ package history
 import (
 	"fmt"
 	"html"
+	"net/url"
 	"strings"
 	"time"
+
+	"github.com/clickonetwo/automations/dialpad/internal/contacts"
 )
 
 var (
@@ -25,14 +28,14 @@ func init() {
 	PT = loc
 }
 
-func RequestForm(phone string, events []SmsEvent) []byte {
-	titlePhone := ""
-	if phone != "" {
-		titlePhone = " with " + html.EscapeString(phone)
+func RequestForm(name string, phone string, events []SmsEvent) []byte {
+	labelString := contacts.FormatForHTML(phone)
+	if name != "" && name != contacts.UnknownName {
+		labelString = html.EscapeString(name)
 	}
 	head := fmt.Sprintf(`
 <head>
-	<title>SMS History %s</title>
+	<title>SMS History: %s</title>
 	<meta charset="utf-8" />
 	<style>
 		body {
@@ -56,6 +59,7 @@ func RequestForm(phone string, events []SmsEvent) []byte {
 			margin-top: 10px;
 		}
 		table {
+			width: 100%%;
 			border: 1px solid black;
 		}
 		th, td {
@@ -67,13 +71,13 @@ func RequestForm(phone string, events []SmsEvent) []byte {
 		}
 	</style>
 </head>
-`, titlePhone)
-	form := fmt.Sprintf(`
-<form action="/history" method="GET">
-	<label for="phone">Phone:</label>
-	<input type="text" id="phone" name="phone" value="%s" placeholder="+15106666687" required><br>
-	<button type="submit">Search</button>
-</form>`, phone)
+`, labelString)
+	form := `
+<form action="/search" method="GET">
+	<label for="phone">Filter:</label>
+	<input type="text" id="filter" name="filter" placeholder="name or phone" size="30"><br>
+	<button type="submit">Change Contact</button>
+</form>`
 	page := `<!DOCTYPE html><html>` + head + `<body>`
 	page += form
 	if len(events) == 0 {
@@ -83,21 +87,21 @@ func RequestForm(phone string, events []SmsEvent) []byte {
 			page += fmt.Sprintf(`<p class="message">Please specify a phone number</p>`)
 		}
 	} else {
-		page += threadTable(phone, events)
+		page += threadTable(labelString, phone, events)
 	}
 	page += `<p class="logout"><a href="/logout">Logout</a></p>`
 	page += `</body></html>`
 	return []byte(page)
 }
 
-func threadTable(phone string, events []SmsEvent) string {
+func threadTable(label, phone string, events []SmsEvent) string {
 	tableHdr := fmt.Sprintf(`
 <table>
 <tr>
 	<th style="width:"40%%">You</th>
 	<th style="width:"55%%">%s</th>
 	<th style="width:"5%%">When</th>
-</tr>`, html.EscapeString(phone))
+</tr>`, label)
 	tableFooter := `</table>`
 	var rows []string
 	for _, event := range events {
@@ -127,7 +131,11 @@ func threadTable(phone string, events []SmsEvent) string {
 	return tableHdr + tableBody + tableFooter
 }
 
-func ServerErrorForm(phone string) []byte {
+func ServerErrorForm(name, phone string) []byte {
+	label := phone
+	if name != "" && name != contacts.UnknownName {
+		label = name
+	}
 	head := `
 <head>
 	<title>Error</title>
@@ -148,11 +156,11 @@ func ServerErrorForm(phone string) []byte {
 </head>
 `
 	page := `<!DOCTYPE html><html>` + head + `<body>`
-	page += fmt.Sprintf(`<h1>Error fetching history for %s</h1>`, html.EscapeString(phone))
+	page += fmt.Sprintf(`<h1>Error fetching history for %s</h1>`, html.EscapeString(label))
 	page += `<p class="message">Sorry, an unexpected error occurred fetching your SMS history.</p>`
 	page += `<p class="normal">Errors like this are usually temporary.</p>`
 	page += fmt.Sprintf(`<p class="normal">To try your query again,
-				<a href="/history?phone=%s">click here</a>.</p>`, phone)
+		<a href="/history?phone=%s&name=%s">click here</a>.</p>`, url.QueryEscape(phone), url.QueryEscape(name))
 	page += `<p class="normal"></p>`
 	page += `<p class="normal"><a href="/logout">Logout</a></p>`
 	page += `</body></html>`

@@ -35,7 +35,7 @@ func TestImportEncryptedSmsEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer storage.PopConfig()
-	err = LoadSmsEvents()
+	err = LoadEventHistory()
 	if err != nil {
 		t.Fatal(err)
 	}
