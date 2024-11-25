@@ -87,12 +87,15 @@ func searchTable(entries []SearchEntry) string {
 	var tableRows []string
 	for i := 0; i < rows; i += columns {
 		row := `<tr>`
-		for j := 0; i+j < len(entries); j += rows {
-			entry := entries[i+j]
-			link := fmt.Sprintf(`/history?phone=%s&name=%s`, url.QueryEscape(entry.Phone), url.QueryEscape(entry.FullName))
-			name := fmt.Sprintf(`<a href="%s">%s</a>`, link, html.EscapeString(entry.FullName))
-			num := fmt.Sprintf(`<a href="%s">%s</a>`, link, FormatForHTML(entry.Phone))
-			col := fmt.Sprintf(`<td width="%d%%">%s<br />%s</td>`, width, name, num)
+		for j, k := 0, 0; k < columns; j, k = j+rows, k+1 {
+			col := fmt.Sprintf(`<td width="%d%%"></td>`, width)
+			if i+j < len(entries) {
+				entry := entries[i+j]
+				link := fmt.Sprintf(`/history?phone=%s&name=%s`, url.QueryEscape(entry.Phone), url.QueryEscape(entry.FullName))
+				name := fmt.Sprintf(`<a href="%s">%s</a>`, link, html.EscapeString(entry.FullName))
+				num := fmt.Sprintf(`<a href="%s">%s</a>`, link, FormatForHTML(entry.Phone))
+				col = fmt.Sprintf(`<td width="%d%%">%s<br />%s</td>`, width, name, num)
+			}
 			row += col
 		}
 		row += `</tr>`
