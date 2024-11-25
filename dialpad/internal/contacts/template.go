@@ -83,14 +83,14 @@ func SearchForm(filter string, entries []SearchEntry) []byte {
 
 func searchTable(entries []SearchEntry) string {
 	slices.SortFunc(entries, SearchEntryCompare)
-	columns, width, skip, rows := 4, 25, len(entries)/4, (len(entries)+3)/4
+	columns, width, rows := 4, 25, (len(entries)+3)/4
 	var tableRows []string
-	for i := 0; i < rows; i += columns {
+	for i := 0; i < rows; i++ {
 		row := `<tr>`
-		for j, k := 0, 0; k < columns; j, k = j+skip, k+1 {
+		for j, k := i, 0; k < columns; j, k = j+rows, k+1 {
 			col := fmt.Sprintf(`<td width="%d%%"></td>`, width)
-			if i+j < len(entries) {
-				entry := entries[i+j]
+			if j < len(entries) {
+				entry := entries[j]
 				link := fmt.Sprintf(`/history?phone=%s&name=%s`, url.QueryEscape(entry.Phone), url.QueryEscape(entry.FullName))
 				name := fmt.Sprintf(`<a href="%s">%s</a>`, link, html.EscapeString(entry.FullName))
 				num := fmt.Sprintf(`<a href="%s">%s</a>`, link, FormatForHTML(entry.Phone))
