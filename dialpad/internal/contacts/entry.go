@@ -11,8 +11,14 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/go-test/deep"
+)
+
+var (
+	UnknownName = "{unknown}"
 )
 
 type Entry struct {
@@ -24,9 +30,59 @@ type Entry struct {
 	Emails    []string `json:"emails"`
 }
 
+type SearchEntry struct {
+	FullName string
+	Phone    string
+}
+
+func SearchEntryCompare(e1, e2 SearchEntry) int {
+	if e1.FullName < e2.FullName {
+		return -1
+	}
+	if e1.FullName > e2.FullName {
+		return 1
+	}
+	if e1.Phone < e2.Phone {
+		return -1
+	}
+	if e1.Phone > e2.Phone {
+		return 1
+	}
+	return 0
+}
+
 type Anomaly struct {
 	Entry
 	Diff []string
+}
+
+func SelectEntriesByPhones(phones []string, entries []Entry) []SearchEntry {
+	var results []SearchEntry
+	all := mapset.NewSet(phones...)
+	found := mapset.NewSet[string]()
+	for _, entry := range entries {
+		for _, phone := range entry.Phones {
+			if all.Contains(phone) {
+				found.Add(phone)
+				se := SearchEntry{
+					FullName: entry.FirstName + " " + entry.LastName,
+					Phone:    phone,
+				}
+				results = append(results, se)
+				break
+			}
+		}
+	}
+	for _, phone := range phones {
+		if strings.HasPrefix(phone, "+") && !found.Contains(phone) {
+			se := SearchEntry{
+				FullName: UnknownName,
+				Phone:    phone,
+			}
+			results = append(results, se)
+		}
+	}
+	return results
 }
 
 func DiffEntries(dialpad, local []Entry) (update []Entry, create []Entry) {
@@ -123,4 +179,23 @@ func ExtractUid(uid string) (string, int64) {
 		return digitMatch[1], i
 	}
 	panic(fmt.Errorf("invalid UID found in contact: %s", uid))
+}
+
+func FilterSearchEntries(filter string, entries []SearchEntry) []SearchEntry {
+	filter = strings.ToLower(filter)
+	var results []SearchEntry
+	for _, entry := range entries {
+		if strings.Contains(strings.ToLower(entry.FullName), filter) {
+			results = append(results, entry)
+			continue
+		}
+		digits := nonDigitsOnly.ReplaceAllString(filter, "")
+		if digits != "" {
+			if strings.Contains(entry.Phone, digits) {
+				results = append(results, entry)
+				continue
+			}
+		}
+	}
+	return results
 }

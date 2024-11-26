@@ -15,7 +15,7 @@ var contactsCmd = &cobra.Command{
 	Use:   "contacts",
 	Short: "Operate on dialpad contacts",
 	Long: `This command allows you to operate on a spreadsheet of Dialpad contacts.
-You must specify an operation and the path to the CSV file to be operated on.`,
+You must specify an operation and the path to the CSV file(s) to be operated on.`,
 }
 
 func init() {

@@ -179,10 +179,10 @@ func TestFindEnvFile(t *testing.T) {
 	if GetConfig() != testConfig {
 		t.Errorf("Initial configuration is not the test configuration")
 	}
-	if _, err := findEnvFile(".env.no-such-environment-file", false); err == nil {
+	if _, err := FindEnvFile(".env.no-such-environment-file", false); err == nil {
 		t.Errorf("Didn't err when file didn't exist in parent")
 	}
-	if d, err := findEnvFile(".env.vault", false); err != nil {
+	if d, err := FindEnvFile(".env.vault", false); err != nil {
 		t.Errorf("Didn't find .env.vault in parent")
 	} else {
 		if d != "../../" {
@@ -196,7 +196,7 @@ func TestFindVaultLocally(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	d, err := findEnvFile(".env.vault", false)
+	d, err := FindEnvFile(".env.vault", false)
 	if err != nil {
 		t.Fatalf("Didn't find .env.vault in parent")
 	}

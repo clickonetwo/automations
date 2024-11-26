@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	filippo.io/age v1.2.0 // indirect
 	github.com/bytedance/sonic v1.12.1 // indirect
 	github.com/bytedance/sonic/loader v0.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
