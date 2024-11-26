@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/clickonetwo/automations/dialpad/internal/middleware"
 	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
@@ -22,17 +23,27 @@ var (
 	dataMissingMsg = "You must specify both username and password"
 	badDataMsg     = "Invalid credentials. Please try again."
 	loginAge       = 365 * 24 * 60 * 60 // 1 year
+	UsageStats     = middleware.StatMap("usage-status")
 )
 
 func CheckLoginMiddleware(c *gin.Context) {
 	userId, _ := c.Cookie(AuthCookieName)
 	if userId == "" {
+		noAuth, _ := UsageStats.Int64("unauthenticated requests")
+		_ = UsageStats.SetInt64("unauthenticated requests", noAuth+1)
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
-	if _, err := CheckAuth(userId, "reader"); err == nil {
+	if email, err := CheckAuth(userId, "reader"); err == nil {
+		auth, err := UsageStats.MapInt64("authenticated requests")
+		if err == nil {
+			auth[email] += 1
+			_ = UsageStats.SetMapInt64("authenticated requests", auth)
+		}
 		c.Next()
 	} else {
+		noAuth, _ := UsageStats.Int64("unauthenticated requests")
+		_ = UsageStats.SetInt64("unauthenticated requests", noAuth+1)
 		c.Redirect(http.StatusFound, "/login")
 	}
 }

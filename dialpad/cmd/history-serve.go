@@ -63,6 +63,7 @@ func serveHistory(envName string) {
 	}
 	r := middleware.CreateCoreEngine(logger)
 	r.GET("/status", func(c *gin.Context) {
+		stats, _ := users.UsageStats.FetchAll()
 		c.IndentedJSON(http.StatusOK, gin.H{
 			"status":        "history server running",
 			"env":           config.Name,
@@ -72,6 +73,7 @@ func serveHistory(envName string) {
 			"contact_count": len(history.AllContacts),
 			"reader_count":  len(users.ListUsers("reader")),
 			"admin_count":   len(users.ListUsers("admin")),
+			"access_counts": stats,
 		})
 	})
 	r.GET("/", func(c *gin.Context) {
