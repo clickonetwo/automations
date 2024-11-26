@@ -52,26 +52,27 @@ func LoginHandler(c *gin.Context) {
 	secure := storage.GetConfig().Name != "development"
 	email := c.Query("username")
 	userId := c.Query("password")
+	next := c.Query("next")
 	if email == "" && userId == "" {
 		var message string
 		if userId, _ := c.Cookie(AuthCookieName); userId != "" {
 			c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
 			message = "Please log in again."
 		}
-		c.Data(http.StatusOK, "text/html", LoginForm(message))
+		c.Data(http.StatusOK, "text/html", LoginForm(message, next))
 		return
 	}
 	if email == "" || userId == "" {
 		c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
-		c.Data(http.StatusOK, "text/html", LoginForm(dataMissingMsg))
+		c.Data(http.StatusOK, "text/html", LoginForm(dataMissingMsg, next))
 		return
 	}
 	if e, err := CheckAuth(userId, "reader"); err == nil && strings.ToLower(e) == strings.ToLower(email) {
 		c.SetCookie(AuthCookieName, userId, loginAge, "/", "", secure, true)
-		c.Data(http.StatusOK, "text/html", LoginSuccessForm())
+		c.Data(http.StatusOK, "text/html", LoginSuccessForm(next))
 	} else {
 		c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
-		c.Data(http.StatusOK, "text/html", LoginForm(badDataMsg))
+		c.Data(http.StatusOK, "text/html", LoginForm(badDataMsg, next))
 	}
 }
 
