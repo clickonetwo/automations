@@ -32,7 +32,7 @@ func (s StatMap) StorageId() string {
 	return string(s)
 }
 
-func (s StatMap) fetchAll() (map[string]any, error) {
+func (s StatMap) FetchAll() (map[string]any, error) {
 	str, err := storage.FetchString(context.Background(), s)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (s StatMap) saveAll(stats map[string]any) error {
 }
 
 func (s StatMap) Int64(name string) (int64, error) {
-	stats, err := s.fetchAll()
+	stats, err := s.FetchAll()
 	if err != nil {
 		return 0, err
 	}
@@ -79,7 +79,7 @@ func (s StatMap) Int64(name string) (int64, error) {
 }
 
 func (s StatMap) SetInt64(name string, val int64) error {
-	stats, err := s.fetchAll()
+	stats, err := s.FetchAll()
 	if err != nil {
 		return err
 	}
@@ -88,23 +88,26 @@ func (s StatMap) SetInt64(name string, val int64) error {
 }
 
 func (s StatMap) MapInt64(name string) (map[string]int64, error) {
-	stats, err := s.fetchAll()
+	stats, err := s.FetchAll()
 	if err != nil {
 		return nil, err
 	}
 	val, ok := stats[name]
 	if !ok {
-		return nil, nil
+		return make(map[string]int64), nil
 	}
 	finalVal, ok := val.(map[string]int64)
 	if !ok {
 		return nil, fmt.Errorf("expected map[string]int64, got %s", reflect.TypeOf(val))
 	}
+	if finalVal == nil {
+		return make(map[string]int64), nil
+	}
 	return finalVal, nil
 }
 
 func (s StatMap) SetMapInt64(name string, val map[string]int64) error {
-	stats, err := s.fetchAll()
+	stats, err := s.FetchAll()
 	if err != nil {
 		return err
 	}
