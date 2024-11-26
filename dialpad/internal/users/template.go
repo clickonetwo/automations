@@ -7,10 +7,11 @@
 package users
 
 import (
+	"fmt"
 	"html"
 )
 
-func LoginForm(message string) []byte {
+func LoginForm(message, next string) []byte {
 	head := `
 <head>
     <title>Dialpad History Login</title>
@@ -55,14 +56,15 @@ func LoginForm(message string) []byte {
         <h2>Dialpad History Login</h2>`
 	messageStart := `<p class="message">`
 	messageEnd := `</p>`
-	form := `
+	form := fmt.Sprintf(`
         <form action="/login" method="GET">
+			<input type="hidden" name="next" value="%s" />
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required><br>
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" required><br>
             <button type="submit">Login</button>
-        </form>`
+        </form>`, next)
 	bodyBottom := `
     </div>
 </body>
@@ -75,14 +77,17 @@ func LoginForm(message string) []byte {
 	return []byte(page)
 }
 
-func LoginSuccessForm() []byte {
-	page := `
+func LoginSuccessForm(next string) []byte {
+	if next == "" {
+		next = "search"
+	}
+	page := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
 	<head>
 		<title>Login successful</title>
 		<meta charset="utf-8">
-		<meta http-equiv="refresh" content="0;url=/search" />
+		<meta http-equiv="refresh" content="0;url=/%s" />
 		<style type="text/css">
 			p {
 				font-family: sans-serif;
@@ -92,8 +97,8 @@ func LoginSuccessForm() []byte {
 	</head>
 	<body>
 		<p>You have successfully logged in!
-			<a href="/search">Click here</a> if you are not redirected in a few seconds.</p>
+			<a href="/%s">Click here</a> if you are not redirected in a few seconds.</p>
 	</body>
-</html>`
+</html>`, next, next)
 	return []byte(page)
 }

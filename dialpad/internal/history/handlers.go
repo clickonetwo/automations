@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -85,4 +86,30 @@ func LoadAllContacts() error {
 	}
 	AllContacts = entries
 	return nil
+}
+
+func StatsHandler(c *gin.Context) {
+	userId, _ := c.Cookie(users.AuthCookieName)
+	if userId == "" {
+		c.Redirect(http.StatusFound, "/login?next=stats")
+		return
+	}
+	if _, err := users.CheckAuth(userId, "admin"); err == nil {
+		stats, err := users.UsageStats.FetchAll()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "details": err.Error()})
+			return
+		}
+		c.IndentedJSON(http.StatusOK, gin.H{
+			"event_count":   len(EventHistory),
+			"first_event":   time.UnixMicro(EventHistory[0].Date).In(PT).Format(time.RFC1123),
+			"last_event":    time.UnixMicro(EventHistory[len(EventHistory)-1].Date).In(PT).Format(time.RFC1123),
+			"contact_count": len(AllContacts),
+			"reader_count":  len(users.ListUsers("reader")),
+			"admin_count":   len(users.ListUsers("admin")),
+			"access_counts": stats,
+		})
+	} else {
+		c.Redirect(http.StatusFound, "/login?next=stats")
+	}
 }
