@@ -44,20 +44,31 @@ func init() {
 
 func serveHistory(envName string) {
 	startTime := time.Now().In(history.PT)
-	_ = storage.PushConfig(envName)
-	defer storage.PopConfig()
-	config := storage.GetConfig()
-	logger, err := zap.NewProduction()
+	err := storage.PushConfig(envName)
 	if err != nil {
 		panic(err)
 	}
-	if err = history.LoadEventHistory(); err != nil {
-		panic(err)
+	defer storage.PopConfig()
+	config := storage.GetConfig()
+	var logger *zap.Logger
+	if config.Name == "development" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
 	}
-	if err = history.LoadAllContacts(); err != nil {
+	if err != nil {
 		panic(err)
 	}
 	defer logger.Sync()
+	if err = users.LoadUsers(); err != nil {
+		logger.Panic("error loading users", zap.Error(err))
+	}
+	if err = history.LoadEventHistory(); err != nil {
+		logger.Panic("error loading event history", zap.Error(err))
+	}
+	if err = history.LoadAllContacts(); err != nil {
+		logger.Panic("error loading contacts", zap.Error(err))
+	}
 	if config.Name == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -78,8 +89,6 @@ func serveHistory(envName string) {
 	r.GET("/stats", history.StatsHandler)
 	r.GET("/login", users.LoginHandler)
 	r.GET("/logout", users.LogoutHandler)
-	r.GET("/users/:type", users.DownloadUsers)
-	r.POST("/users/:type", users.UploadUsers)
 	port, found := os.LookupEnv("PORT")
 	if !found {
 		port = "8080"

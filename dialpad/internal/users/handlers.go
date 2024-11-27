@@ -7,9 +7,6 @@
 package users
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -34,7 +31,7 @@ func CheckLoginMiddleware(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
-	if email, err := CheckAuth(userId, "reader"); err == nil {
+	if email := CheckAuth(userId, "reader"); email != "" {
 		auth, err := UsageStats.MapInt64("authenticated requests")
 		if err == nil {
 			auth[email] += 1
@@ -67,7 +64,7 @@ func LoginHandler(c *gin.Context) {
 		c.Data(http.StatusOK, "text/html", LoginForm(dataMissingMsg, next))
 		return
 	}
-	if e, err := CheckAuth(userId, "reader"); err == nil && strings.ToLower(e) == strings.ToLower(email) {
+	if e := CheckAuth(userId, "reader"); e != "" && strings.ToLower(e) == strings.ToLower(email) {
 		c.SetCookie(AuthCookieName, userId, loginAge, "/", "", secure, true)
 		c.Data(http.StatusOK, "text/html", LoginSuccessForm(next))
 	} else {
@@ -80,55 +77,4 @@ func LogoutHandler(c *gin.Context) {
 	secure := storage.GetConfig().Name != "development"
 	c.SetCookie(AuthCookieName, "", -1, "/", "", secure, true)
 	c.Redirect(http.StatusFound, "/login")
-}
-
-func DownloadUsers(c *gin.Context) {
-	userId := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-	if userId == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "error": "Provide authorization"})
-		return
-	}
-	if _, err := CheckAuth(userId, "admin"); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"status": "error", "error": err.Error()})
-		return
-	}
-	userType := c.Param("type")
-	c.JSON(http.StatusOK, ListUsers(userType))
-}
-
-func UploadUsers(c *gin.Context) {
-	userId := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-	if userId == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "error": "Provide authorization"})
-		return
-	}
-	if _, err := CheckAuth(userId, "admin"); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"status": "error", "error": err.Error()})
-		return
-	}
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
-		return
-	}
-	var userMap map[string]string
-	if err = json.Unmarshal(body, &userMap); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": err.Error()})
-		return
-	}
-	userType := c.Param("type")
-	switch userType {
-	case "admin":
-		err = Admins.SaveIdsEmails(userMap)
-	case "reader":
-		err = Readers.SaveIdsEmails(userMap)
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": fmt.Sprintf("unknown user type: %s", userType)})
-		return
-	}
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusCreated, gin.H{"status": "created", "type": userType, "count": len(userMap)})
 }

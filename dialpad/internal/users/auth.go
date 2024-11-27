@@ -7,49 +7,40 @@
 package users
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
 var (
 	AuthCookieName = "dialpad_history_user_id"
+	Admins         map[string]Entry
+	Readers        map[string]Entry
 )
 
-func ListUsers(capability string) map[string]string {
-	var userMap map[string]string
+func ListUsers(capability string) map[string]Entry {
 	switch capability {
 	case "admin":
-		userMap, _ = Admins.IdsEmails()
+		return Admins
 	case "reader":
-		userMap, _ = Readers.IdsEmails()
+		return Readers
+	default:
+		return nil
 	}
-	return userMap
 }
 
-func CheckAuth(userId, capability string) (string, error) {
+func CheckAuth(userId, capability string) string {
 	env := storage.GetConfig()
 	if userId == env.MasterAdminId {
-		return env.MasterAdminEmail, nil
+		return env.MasterAdminEmail
 	}
-	// not the master user, so check the database
-	var userMap map[string]string
-	var err error
 	switch capability {
 	case "admin":
-		userMap, err = Admins.IdsEmails()
+		if admin, ok := Admins[userId]; ok {
+			return admin.Emails[0]
+		}
 	case "reader":
-		userMap, err = Readers.IdsEmails()
-	case "default":
-		err = fmt.Errorf("unknown capability: %s", capability)
+		if reader, ok := Readers[userId]; ok {
+			return reader.Emails[0]
+		}
 	}
-	if err != nil {
-		return "", err
-	}
-	email, ok := userMap[userId]
-	if !ok {
-		return "", errors.New("insufficient capabilities")
-	}
-	return email, nil
+	return ""
 }

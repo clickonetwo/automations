@@ -35,8 +35,8 @@ func RequestHandler(c *gin.Context) {
 		name = contacts.UnknownName
 	}
 	userId, _ := c.Cookie(users.AuthCookieName)
-	email, err := users.CheckAuth(userId, "reader")
-	if err != nil {
+	email := users.CheckAuth(userId, "reader")
+	if email == "" {
 		c.Data(http.StatusOK, "text/html", ServerErrorForm(name, phone))
 		return
 	}
@@ -47,8 +47,8 @@ func RequestHandler(c *gin.Context) {
 func SearchHandler(c *gin.Context) {
 	filter := c.Query("filter")
 	userId, _ := c.Cookie(users.AuthCookieName)
-	email, err := users.CheckAuth(userId, "reader")
-	if err != nil {
+	email := users.CheckAuth(userId, "reader")
+	if email == "" {
 		c.Data(http.StatusOK, "text/html", contacts.ServerErrorForm(filter))
 		return
 	}
@@ -94,7 +94,7 @@ func StatsHandler(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/login?next=stats")
 		return
 	}
-	if _, err := users.CheckAuth(userId, "admin"); err == nil {
+	if email := users.CheckAuth(userId, "admin"); email != "" {
 		stats, err := users.UsageStats.FetchAll()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "details": err.Error()})
