@@ -13,7 +13,7 @@ import (
 
 func TestGetDb(t *testing.T) {
 	db, prefix := GetDb()
-	if db == nil || !strings.HasSuffix(prefix, ":t:") {
+	if db == nil || !strings.HasSuffix(prefix, ":c:") {
 		t.Errorf("initial GetDb didn't return test db: %v, %q", db, prefix)
 	}
 }
