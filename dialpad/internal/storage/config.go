@@ -20,6 +20,9 @@ type Environment struct {
 	AgeSecretKey         string
 	AwsAccessKey         string
 	AwsSecretKey         string
+	AwsRegion            string
+	AwsBucket            string
+	AwsDialpadFolder     string
 	DbUrl                string
 	DbKeyPrefix          string
 	DialpadApiKey        string
@@ -35,6 +38,9 @@ var (
 		Name:                 "CI",
 		AgePublicKey:         "age1mefeyagknwrhpepv6xkggfqwhgzj53rmuqmntkktf9y4mxavys3sns6prp",
 		AgeSecretKey:         "AGE-SECRET-KEY-188SQQGWWCRCCYZ964VPDY5YGUCVL0QUEMEZ3TUV9AVJ2RY5G03QQE0PA38",
+		AwsRegion:            "",
+		AwsBucket:            "",
+		AwsDialpadFolder:     "",
 		DbUrl:                "redis://",
 		DbKeyPrefix:          "c:",
 		DialpadApiKey:        "",
@@ -115,6 +121,9 @@ func pushEnvConfig(filename string) error {
 		Name:                 os.Getenv("ENVIRONMENT_NAME"),
 		AgePublicKey:         os.Getenv("AGE_PUBLIC_KEY"),
 		AgeSecretKey:         os.Getenv("AGE_SECRET_KEY"),
+		AwsRegion:            os.Getenv("AWS_REGION"),
+		AwsBucket:            os.Getenv("AWS_BUCKET"),
+		AwsDialpadFolder:     os.Getenv("AWS_DIALPAD_FOLDER"),
 		DbUrl:                os.Getenv("REDIS_URL"),
 		DbKeyPrefix:          os.Getenv("DB_KEY_PREFIX"),
 		DialpadApiKey:        os.Getenv("DIALPAD_API_KEY"),
