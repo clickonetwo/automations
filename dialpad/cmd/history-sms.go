@@ -9,7 +9,9 @@ package cmd
 import (
 	"log"
 	"strings"
+	"time"
 
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/clickonetwo/automations/dialpad/internal/history"
@@ -32,12 +34,13 @@ If the report path ends in ".age", it's decrypted before being imported.`,
 		defer storage.PopConfig()
 		update, _ := cmd.Flags().GetCount("update")
 		initialize, _ := cmd.Flags().GetCount("initialize")
+		id, _ := cmd.Flags().GetString("download-report")
 		if initialize > 0 {
 			initializeHistory(args[0])
 		} else if update > 0 {
 			updateHistory(args[0])
 		} else {
-			log.Fatalf("You must specify one of --update or --initialize and a report path to import")
+			requestReport(id, args[0])
 		}
 	},
 }
@@ -47,8 +50,10 @@ func init() {
 	smsCmd.Args = cobra.ExactArgs(1)
 	smsCmd.Flags().Count("initialize", "initialize SMS history from report")
 	smsCmd.Flags().Count("update", "update SMS history from report")
-	smsCmd.MarkFlagsOneRequired("initialize", "update")
-	smsCmd.MarkFlagsMutuallyExclusive("initialize", "update")
+	smsCmd.Flags().Count("request-report", "request report for SMS history update")
+	smsCmd.Flags().String("download-report", "", "download requested SMS history report")
+	smsCmd.MarkFlagsOneRequired("initialize", "update", "request-report", "download-report")
+	smsCmd.MarkFlagsMutuallyExclusive("initialize", "update", "request-report", "download-report")
 }
 
 func initializeHistory(path string) {
@@ -106,4 +111,44 @@ func updateHistory(path string) {
 		log.Fatalf("Upload failed: %v", err)
 	}
 	log.Printf("Successfully uploaded the updated SMS history.")
+}
+
+func requestReport(id, path string) {
+	if id == "" {
+		log.Printf("Downloading existing SMS history...")
+		err := history.LoadEventHistory()
+		if err != nil {
+			log.Fatalf("Failed to load existing history: %v", err)
+		}
+		earliest := history.EventHistory[len(history.EventHistory)-1].Date
+		log.Printf("Last SMS in history is dated %s", time.UnixMicro(earliest).Format(time.RFC1123))
+		log.Printf("Requesting a report for all days since then...")
+		id, err = history.RequestSmsReport(earliest)
+		if err != nil {
+			log.Fatalf("Request failed: %v", err)
+		}
+	}
+	log.Printf("Waiting for report with id %s (^C to stop)...", id)
+	var url string
+	var err error
+	bar := progressbar.Default(-1, "Waiting for report")
+	for wait := false; url == "" && err == nil; wait = true {
+		if wait {
+			for i := 0; i < 20; i++ {
+				time.Sleep(time.Second / 4)
+				_ = bar.Add(1)
+			}
+		}
+		url, err = history.GetSmsReportDownloadUrl(id)
+	}
+	_ = bar.Close()
+	if err != nil {
+		log.Fatalf("Couldn't wait for report, try again with --download-report %s: %v", id, err)
+	}
+	log.Printf("Downloading report with id %s...", id)
+	err = history.DownloadSmsReport(url, path, false)
+	if err != nil {
+		log.Fatalf("Download failed, try again with --download-report %s: %v", id, err)
+	}
+	log.Printf("Successfully downloaded report with id %s to %q", id, path)
 }
