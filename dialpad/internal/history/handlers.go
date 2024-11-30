@@ -15,7 +15,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/clickonetwo/automations/dialpad/internal/contacts"
-	"github.com/clickonetwo/automations/dialpad/internal/storage"
 	"github.com/clickonetwo/automations/dialpad/internal/users"
 )
 
@@ -63,11 +62,7 @@ func SearchHandler(c *gin.Context) {
 }
 
 func LoadEventHistory() error {
-	dir, err := storage.FindEnvFile("data", true)
-	if err != nil {
-		return err
-	}
-	events, err := ImportEncryptedSmsEvents(dir + "data/all-events.csv.age")
+	events, err := DownloadSmsHistory()
 	if err != nil {
 		return err
 	}
@@ -76,11 +71,7 @@ func LoadEventHistory() error {
 }
 
 func LoadAllContacts() error {
-	dir, err := storage.FindEnvFile("data", true)
-	if err != nil {
-		return err
-	}
-	entries, err := contacts.ImportEncryptedContacts(dir + "data/all-contacts.csv.age")
+	entries, err := contacts.DownloadAllContacts()
 	if err != nil {
 		return err
 	}

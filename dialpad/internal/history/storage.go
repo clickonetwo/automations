@@ -25,7 +25,7 @@ func UploadSmsHistory(events []SmsEvent) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.CreateTemp("", "gob*.age")
+	f, err := os.CreateTemp("", "gob-*.age")
 	if err != nil {
 		return err
 	}

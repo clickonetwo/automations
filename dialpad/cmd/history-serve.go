@@ -60,6 +60,7 @@ func serveHistory(envName string) {
 		panic(err)
 	}
 	defer logger.Sync()
+	logger.Info("Starting resource downloads for users, events, and contacts")
 	if err = users.LoadUsers(); err != nil {
 		logger.Panic("error loading users", zap.Error(err))
 	}
@@ -69,6 +70,7 @@ func serveHistory(envName string) {
 	if err = history.LoadAllContacts(); err != nil {
 		logger.Panic("error loading contacts", zap.Error(err))
 	}
+	logger.Info("Completed resource downloads for users, events, and contacts")
 	if config.Name == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -94,7 +96,7 @@ func serveHistory(envName string) {
 		port = "8080"
 	}
 	address := "0.0.0.0:" + port
-	if config.Name == "development" {
+	if config.Name == "development" || config.Name == "test" {
 		address = "127.0.0.1:" + port
 	}
 	logger.Info(

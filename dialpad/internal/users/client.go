@@ -30,7 +30,7 @@ type entryPage struct {
 	Items  []Entry `json:"items"`
 }
 
-func DownloadUsers() ([]Entry, error) {
+func FetchDialpadUsers() ([]Entry, error) {
 	var results []Entry
 	key := storage.GetConfig().DialpadApiKey
 	baseUrl := fmt.Sprintf("%s/users?limit=200&apikey=%s", contacts.DialpadApiRoot, key)
@@ -71,23 +71,4 @@ func DownloadUsers() ([]Entry, error) {
 		}
 	}
 	return results, nil
-}
-
-// LoadUsers gets the latest users from Dialpad.
-//
-// SuperAdmins in Dialpad become admins in this server.
-// Every user becomes a reader in this server.
-func LoadUsers() error {
-	users, err := DownloadUsers()
-	if err != nil {
-		return err
-	}
-	Readers, Admins = make(map[string]Entry), make(map[string]Entry)
-	for _, user := range users {
-		Readers[user.Id] = user
-		if user.IsSuperAdmin {
-			Admins[user.Id] = user
-		}
-	}
-	return nil
 }
