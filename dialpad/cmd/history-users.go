@@ -7,12 +7,7 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
 	"log"
-	"net/http"
 
 	"github.com/spf13/cobra"
 
@@ -22,80 +17,64 @@ import (
 
 // usersCmd represents the users command
 var usersCmd = &cobra.Command{
-	Use:   "users [flags] path-to-file.csv",
-	Short: "Manage history users",
-	Long: `This command is used to upload and download users of the history server.
-The command downloads to the given file unless the --upload flag is given.
-The command downloads "reader" users unless the --admin flag is given.`,
+	Use:   "users [flags] path-to-users.csv",
+	Short: "Manage the users known to the history server",
+	Long: `The history server loads a list of users from AWS each time it starts.
+This command allows managing that list of users.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.SetFlags(0)
-		env, _ := cmd.InheritedFlags().GetString("env")
-		if err := storage.PushConfig(env); err != nil {
-			log.Fatal(err)
+		envName, _ := cmd.InheritedFlags().GetString("env")
+		if err := storage.PushConfig(envName); err != nil {
+			panic(err)
 		}
 		defer storage.PopConfig()
-		admin, _ := cmd.Flags().GetCount("admin")
-		upload, _ := cmd.Flags().GetCount("upload")
-		historyUsers(args[0], admin > 0, upload > 0)
+		update, _ := cmd.Flags().GetCount("update")
+		export, _ := cmd.Flags().GetString("export")
+		var entries []users.Entry
+		if update > 0 {
+			entries = updateUsers()
+		}
+		if export != "" {
+			exportUsers(entries, export)
+		}
 	},
 }
 
 func init() {
 	historyCmd.AddCommand(usersCmd)
-	historyCmd.Args = cobra.ExactArgs(1)
-	usersCmd.Flags().Count("admin", "manage admin users")
-	usersCmd.Flags().Count("upload", "upload users")
+	usersCmd.Args = cobra.NoArgs
+	usersCmd.Flags().Count("update", "update users from Dialpad")
+	usersCmd.Flags().String("export", "", "export users to path")
+	usersCmd.MarkFlagsOneRequired("update", "export")
 }
 
-func historyUsers(path string, doAdmin bool, doUpload bool) {
-	env := storage.GetConfig()
-	var userType = "reader"
-	if doAdmin {
-		userType = "admin"
+func updateUsers() []users.Entry {
+	log.Printf("Fetching users from Dialpad...")
+	allUsers, err := users.FetchDialpadUsers()
+	if err != nil {
+		log.Fatalf("Dialpad fetch failed: %v", err)
 	}
-	verb := "GET"
-	body := io.Reader(nil)
-	if doUpload {
-		verb = "POST"
-		u, err := users.ImportUserIdsEmails(path)
+	log.Printf("Uploading users to AWS...")
+	err = users.UploadUsersList(allUsers)
+	if err != nil {
+		log.Fatalf("AWS upload failed: %v", err)
+	}
+	log.Printf("User update complete.")
+	return allUsers
+}
+
+func exportUsers(entries []users.Entry, path string) {
+	if entries == nil {
+		log.Printf("Fetching users from AWS...")
+		dl, err := users.DownloadUsersList()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("AWS download failed: %v", err)
 		}
-		b, err := json.Marshal(u)
-		if err != nil {
-			log.Fatal(err)
-		}
-		body = bytes.NewReader(b)
+		entries = dl
 	}
-	u := fmt.Sprintf("%s/users/%s", env.HerokuHostUrl, userType)
-	req, err := http.NewRequest(verb, u, body)
-	if err != nil {
-		log.Fatal(err)
+	log.Printf("Exporting %d users in CSV format...", len(entries))
+	if err := users.ExportUsers(entries, path); err != nil {
+		log.Fatalf("Export failed: %v", err)
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+env.MasterAdminId)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	rb, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode > 201 {
-		log.Fatal(fmt.Errorf("upload failed with status code %d, body: %s", resp.StatusCode, string(rb)))
-	}
-	if doUpload {
-		log.Printf("Upload of users from %q succeeded.", path)
-		return
-	}
-	var userMap map[string]string
-	err = json.Unmarshal(rb, &userMap)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = users.ExportUserIdsEmails(path, userMap)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("%d users exported to %q.", len(userMap), path)
+	log.Printf("Export of users to %q complete.", path)
 }

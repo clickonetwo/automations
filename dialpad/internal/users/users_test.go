@@ -10,46 +10,29 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-test/deep"
+	"github.com/clickonetwo/automations/dialpad/internal/storage"
 )
 
-func TestLoadUsers(t *testing.T) {
-	idsEmails, err := ImportUserIdsEmails("../../local/Oasis-admins.csv")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(idsEmails) != 2 {
-		t.Errorf("got %d admins, want 2", len(idsEmails))
-	}
-	if err := Admins.SaveIdsEmails(idsEmails); err != nil {
-		t.Fatal(err)
-	}
-	cpy, err := Admins.IdsEmails()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if diff := deep.Equal(cpy, idsEmails); diff != nil {
-		t.Error(diff)
-	}
-	idsEmails, err = ImportUserIdsEmails("../../local/Oasis-readers.csv")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := Readers.SaveIdsEmails(idsEmails); err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Loaded both admins and readers to database")
-}
-
 func TestLoginForm(t *testing.T) {
-	page := LoginForm("This is a test message.")
+	page := LoginForm("This is a test message.", "")
 	err := os.WriteFile("../../local/test-login-1.html", []byte(page), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	page = LoginForm("")
+	page = LoginForm("", "test")
 	err = os.WriteFile("../../local/test-login-2.html", []byte(page), 0644)
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadUsers(t *testing.T) {
+	err := storage.PushConfig("development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer storage.PopConfig()
+	if err := LoadUsers(); err != nil {
 		t.Fatal(err)
 	}
 }

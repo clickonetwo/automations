@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// contactsCmd represents the contacts command
+// historyContactsCmd represents the contacts command
 var contactsCmd = &cobra.Command{
 	Use:   "contacts",
 	Short: "Operate on dialpad contacts",

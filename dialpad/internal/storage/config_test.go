@@ -14,8 +14,8 @@ import (
 )
 
 func TestGetConfig(t *testing.T) {
-	if GetConfig() != testConfig {
-		t.Errorf("Initial configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Initial configuration is not the CI configuration")
 	}
 }
 
@@ -32,56 +32,56 @@ func TestPushAlteredConfig(t *testing.T) {
 	if diff := deep.Equal(env, env2); diff == nil {
 		t.Errorf("Popped configuration is the altered conifiguration")
 	}
-	if env2 != testConfig {
+	if env2 != ciConfig {
 		t.Errorf("Popped configuration is not the original configuration")
 	}
 }
 
 func TestPushPopConfig(t *testing.T) {
-	if GetConfig() != testConfig {
-		t.Errorf("Initial configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Initial configuration is not the CI configuration")
 	}
 	popTest := func() {
 		PopConfig()
-		if GetConfig() != testConfig {
-			t.Errorf("Environment after pop is not the test configuration")
+		if GetConfig() != ciConfig {
+			t.Errorf("Environment after pop is not the CI configuration")
 		}
 	}
 	if err := PushConfig("staging"); err != nil {
 		t.Errorf("Failed to push config and load staging configuration")
 	}
 	defer popTest()
-	if GetConfig() == testConfig {
-		t.Errorf("Environment after push is still the test configuration")
+	if GetConfig() == ciConfig {
+		t.Errorf("Environment after push is still the CI configuration")
 	}
 }
 
 func TestPushPopFailedConfig(t *testing.T) {
-	if GetConfig() != testConfig {
-		t.Errorf("Initial configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Initial configuration is not the CI configuration")
 	}
 	if err := PushConfig(".no-such-environment-file"); err == nil {
 		t.Errorf("Was able to push a non-existent environment")
 	}
 	defer PopConfig()
-	if GetConfig() != testConfig {
-		t.Errorf("Environment after failed push is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Environment after failed push is not the CI configuration")
 	}
 }
 
 func TestMultiPushPopConfig(t *testing.T) {
-	if GetConfig() != testConfig {
-		t.Errorf("Initial configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Initial configuration is not the CI configuration")
 	}
-	configT := GetConfig()
-	if configT.DbKeyPrefix != "t:" {
-		t.Errorf("Initial config prefix is wrong: %q", configT.DbKeyPrefix)
+	configC := GetConfig()
+	if configC.DbKeyPrefix != "c:" {
+		t.Errorf("Initial config prefix is wrong: %q", configC.DbKeyPrefix)
 	}
 	if err := PushConfig("development"); err != nil {
 		t.Fatalf("failed to push development config: %v", err)
 	}
 	configD := GetConfig()
-	if configT == configD {
+	if configC == configD {
 		t.Errorf("Configs before and after dev push are the same")
 	}
 	if configD.DbKeyPrefix != "d:" {
@@ -119,34 +119,34 @@ func TestMultiPushPopConfig(t *testing.T) {
 	}
 	PopConfig()
 	configT2 := GetConfig()
-	if configT2 != configT {
+	if configT2 != configC {
 		t.Errorf("Test config before and after pop are different")
 	}
-	if GetConfig() != testConfig {
-		t.Errorf("Terminal configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Terminal configuration is not the CI configuration")
 	}
 }
 
 func TestPushPopPopTestConfig(t *testing.T) {
-	if err := PushConfig("test"); err != nil {
+	if err := PushConfig("ci"); err != nil {
 		t.Fatalf("Failed to push configuration: %v", err)
 	}
-	if GetConfig() != testConfig {
-		t.Errorf("Pushed configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Pushed configuration is not the CI configuration")
 	}
 	PopConfig()
-	if GetConfig() != testConfig {
-		t.Errorf("Popped configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Popped configuration is not the CI configuration")
 	}
 	PopConfig()
-	if GetConfig() != testConfig {
-		t.Errorf("Overpopped configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Overpopped configuration is not the CI configuration")
 	}
 }
 
 func TestPushVaultConfig(t *testing.T) {
-	if GetConfig() != testConfig {
-		t.Errorf("Initial configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Initial configuration is not the CI configuration")
 	}
 	var o, n string
 	var err error
@@ -176,8 +176,8 @@ func TestPushVaultConfig(t *testing.T) {
 }
 
 func TestFindEnvFile(t *testing.T) {
-	if GetConfig() != testConfig {
-		t.Errorf("Initial configuration is not the test configuration")
+	if GetConfig() != ciConfig {
+		t.Errorf("Initial configuration is not the CI configuration")
 	}
 	if _, err := FindEnvFile(".env.no-such-environment-file", false); err == nil {
 		t.Errorf("Didn't err when file didn't exist in parent")

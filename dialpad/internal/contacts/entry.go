@@ -36,19 +36,10 @@ type SearchEntry struct {
 }
 
 func SearchEntryCompare(e1, e2 SearchEntry) int {
-	if e1.FullName < e2.FullName {
-		return -1
+	if nc := strings.Compare(e1.FullName, e2.FullName); nc != 0 {
+		return nc
 	}
-	if e1.FullName > e2.FullName {
-		return 1
-	}
-	if e1.Phone < e2.Phone {
-		return -1
-	}
-	if e1.Phone > e2.Phone {
-		return 1
-	}
-	return 0
+	return strings.Compare(e1.Phone, e2.Phone)
 }
 
 type Anomaly struct {

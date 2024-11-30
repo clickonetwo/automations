@@ -22,10 +22,10 @@ import (
 )
 
 var (
-	dialpadApiRoot      = "https://dialpad.com/api/v2"
-	dialPadListClient   = NewRLHTTPClient(1200, 60)
-	dialPadUpdateClient = NewRLHTTPClient(100, 60)
-	dialPadDeleteClient = NewRLHTTPClient(1200, 60)
+	DialpadApiRoot      = "https://dialpad.com/api/v2"
+	DialPadListClient   = NewRLHTTPClient(1200, 60)
+	DialPadUpdateClient = NewRLHTTPClient(100, 60)
+	DialPadDeleteClient = NewRLHTTPClient(1200, 60)
 )
 
 type entryPage struct {
@@ -35,7 +35,7 @@ type entryPage struct {
 
 func ListContacts(accountId string) (results []Entry, errs []error) {
 	key := storage.GetConfig().DialpadApiKey
-	baseUrl := fmt.Sprintf("%s/contacts?limit=200&apikey=%s", dialpadApiRoot, key)
+	baseUrl := fmt.Sprintf("%s/contacts?limit=200&apikey=%s", DialpadApiRoot, key)
 	if accountId != "" {
 		baseUrl = fmt.Sprintf("%s&accountId=%s", baseUrl, accountId)
 	}
@@ -55,7 +55,7 @@ func ListContacts(accountId string) (results []Entry, errs []error) {
 			panic(err)
 		}
 		req.Header.Add("accept", "application/json")
-		resp, err := dialPadListClient.Do(req)
+		resp, err := DialPadListClient.Do(req)
 		if err != nil {
 			panic(err)
 		}
@@ -94,7 +94,7 @@ func ListContacts(accountId string) (results []Entry, errs []error) {
 
 func UpdateContacts(entries []Entry) (errs []error) {
 	key := storage.GetConfig().DialpadApiKey
-	url := fmt.Sprintf("%s/contacts?apikey=%s", dialpadApiRoot, key)
+	url := fmt.Sprintf("%s/contacts?apikey=%s", DialpadApiRoot, key)
 	bar := progressbar.Default(int64(len(entries)))
 	defer bar.Close()
 	for _, entry := range entries {
@@ -105,7 +105,7 @@ func UpdateContacts(entries []Entry) (errs []error) {
 		req, _ := http.NewRequest("PUT", url, bytes.NewReader(body))
 		req.Header.Add("accept", "application/json")
 		req.Header.Add("content-type", "application/json")
-		resp, err := dialPadUpdateClient.Do(req)
+		resp, err := DialPadUpdateClient.Do(req)
 		if err != nil {
 			panic(err)
 		}
@@ -130,10 +130,10 @@ func DeleteContacts(entries []Entry) (errs []error) {
 			errs = append(errs, err)
 			continue
 		}
-		url := fmt.Sprintf("%s/contacts/%s?apikey=%s", dialpadApiRoot, entry.FullId, key)
+		url := fmt.Sprintf("%s/contacts/%s?apikey=%s", DialpadApiRoot, entry.FullId, key)
 		req, _ := http.NewRequest("DELETE", url, nil)
 		req.Header.Add("accept", "application/json")
-		resp, err := dialPadDeleteClient.Do(req)
+		resp, err := DialPadDeleteClient.Do(req)
 		if err != nil {
 			panic(err)
 		}

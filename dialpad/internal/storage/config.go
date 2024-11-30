@@ -18,6 +18,11 @@ type Environment struct {
 	Name                 string
 	AgePublicKey         string
 	AgeSecretKey         string
+	AwsAccessKey         string
+	AwsSecretKey         string
+	AwsRegion            string
+	AwsBucket            string
+	AwsDialpadFolder     string
 	DbUrl                string
 	DbKeyPrefix          string
 	DialpadApiKey        string
@@ -29,19 +34,22 @@ type Environment struct {
 
 //goland:noinspection SpellCheckingInspection
 var (
-	testConfig = Environment{
-		Name:                 "test",
+	ciConfig = Environment{
+		Name:                 "CI",
 		AgePublicKey:         "age1mefeyagknwrhpepv6xkggfqwhgzj53rmuqmntkktf9y4mxavys3sns6prp",
 		AgeSecretKey:         "AGE-SECRET-KEY-188SQQGWWCRCCYZ964VPDY5YGUCVL0QUEMEZ3TUV9AVJ2RY5G03QQE0PA38",
+		AwsRegion:            "",
+		AwsBucket:            "",
+		AwsDialpadFolder:     "",
 		DbUrl:                "redis://",
-		DbKeyPrefix:          "t:",
+		DbKeyPrefix:          "c:",
 		DialpadApiKey:        "",
 		DialpadWebhookSecret: "",
 		HerokuHostUrl:        "http://127.0.0.1:8080",
 		MasterAdminId:        "dan@clickonetwo.io",
 		MasterAdminEmail:     "dan@clickonetwo.io",
 	}
-	loadedConfig = testConfig
+	loadedConfig = ciConfig
 	configStack  []Environment
 )
 
@@ -53,8 +61,8 @@ func PushConfig(name string) error {
 	if name == "" {
 		return pushEnvConfig("")
 	}
-	if strings.HasPrefix(name, "t") {
-		return pushTestConfig()
+	if strings.HasPrefix(name, "c") {
+		return pushCiConfig()
 	}
 	if strings.HasPrefix(name, "d") {
 		return pushEnvConfig(".env")
@@ -65,6 +73,9 @@ func PushConfig(name string) error {
 	if strings.HasPrefix(name, "p") {
 		return pushEnvConfig(".env.production")
 	}
+	if strings.HasPrefix(name, "t") {
+		return pushEnvConfig(".env.testing")
+	}
 	return fmt.Errorf("unknown environment: %s", name)
 }
 
@@ -73,9 +84,9 @@ func PushAlteredConfig(env Environment) {
 	loadedConfig = env
 }
 
-func pushTestConfig() error {
+func pushCiConfig() error {
 	configStack = append(configStack, loadedConfig)
-	loadedConfig = testConfig
+	loadedConfig = ciConfig
 	return nil
 }
 
@@ -110,6 +121,9 @@ func pushEnvConfig(filename string) error {
 		Name:                 os.Getenv("ENVIRONMENT_NAME"),
 		AgePublicKey:         os.Getenv("AGE_PUBLIC_KEY"),
 		AgeSecretKey:         os.Getenv("AGE_SECRET_KEY"),
+		AwsRegion:            os.Getenv("AWS_REGION"),
+		AwsBucket:            os.Getenv("AWS_BUCKET"),
+		AwsDialpadFolder:     os.Getenv("AWS_DIALPAD_FOLDER"),
 		DbUrl:                os.Getenv("REDIS_URL"),
 		DbKeyPrefix:          os.Getenv("DB_KEY_PREFIX"),
 		DialpadApiKey:        os.Getenv("DIALPAD_API_KEY"),
