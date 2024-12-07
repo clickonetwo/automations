@@ -11,11 +11,13 @@ async function linkExistingCallAndJotformRecords() {
     const map = await makePhoneToRecordMap(masterTable)
     await addCallRecordsToMasterTable(masterTable, map)
     await addFormRecordsToMasterTable(masterTable, map)
+    await markDuplicateRecords(masterTable, map)
 }
 
 async function makePhoneToRecordMap(masterTable) {
     output.text(`Making map of known phone numbers to records...`)
-    const map = new Map();
+    const map = new Map()
+    let [dupNumbers, dupRecords] = [0, 0]
     let result = await masterTable.selectRecordsAsync({
         fields: [
             "fld4lEBvUftT8MoGs",    // E.164 number
@@ -26,14 +28,22 @@ async function makePhoneToRecordMap(masterTable) {
     for (const record of result.records) {
         const phone = record.getCellValueAsString("fld4lEBvUftT8MoGs");
         if (phone) {
-            if (map.has(phone)) {
-                output.text(`Warning: E.164 number ${phone} appears on multiple records.`)
-                continue
+            const dups = map.get(phone);
+            if (dups) {
+                if (dups.length == 1) {
+                    dupNumbers++
+                    dupRecords++    // account for the first one
+                }
+                dups.push(record)
+                map.set(phone, dups)
+                dupRecords++
+            } else {
+                map.set(phone, [record])
             }
-            map.set(phone, record);
         }
     }
-    output.text(`Found ${map.size} different phone numbers...`)
+    output.text(`Found ${map.size} different phone numbers.`)
+    output.text(`Of those, ${dupNumbers} phone numbers are shared among ${dupRecords} records.`)
     return map;
 }
 
@@ -48,12 +58,9 @@ async function addCallRecordsToMasterTable(masterTable, map) {
     const idsAndPhones = result.records.map(r => ({id: r.id, phone: r.getCellValueAsString(fromFieldId)}))
     const records = idsAndPhones.filter(r => map.has(r.phone))
     output.text(`Found ${records.length} call records to be linked to the master table.`)
-    for (let i = 0; i < records.length; i += 50) {
-        output.text(`Processing updates in batch ${(i/50)+1}...`)
-        const updates = []
-        for (let j = i; j < records.length && j < 50; j++) {
-            const record = records[j]
-            const master = map.get(record.phone)
+    const updates = []
+    for (const record of records) {
+        for (const master of map.get(record.phone)) {
             let existingLinks = master.getCellValue(toFieldId)
             if (existingLinks) {
                 if (existingLinks && existingLinks.map(v => v.id).includes(record.id)) {
@@ -70,9 +77,16 @@ async function addCallRecordsToMasterTable(masterTable, map) {
             }
             updates.push(update)
         }
-        await masterTable.updateRecordsAsync(updates)
     }
-    output.text(`Processed ${records.length} updates.`)
+    output.text(`Found ${updates.length} master records to be updated with links to call records.`)
+    for (let i = 0; i < updates.length; i += 50) {
+        const end = Math.min(updates.length, i + 50)
+        output.text(`Processing updates ${i+1} to ${end}...`)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
+    if (updates.length > 0) {
+        output.text(`Processed ${updates.length} update${updates.length == 1 ? "" : "s"}.`)
+    }
 }
 
 async function addFormRecordsToMasterTable(masterTable, map) {
@@ -98,12 +112,9 @@ async function addFormRecordsToMasterTable(masterTable, map) {
     })
     const records = idsAndPhones.filter(r => map.has(r.phone))
     output.text(`Found ${records.length} form records to be linked to the master table.`)
-    for (let i = 0; i < records.length; i += 50) {
-        output.text(`Processing updates in batch ${(i/50)+1}...`)
-        const updates = []
-        for (let j = i; j < records.length && j < 50; j++) {
-            const record = records[j]
-            const master = map.get(record.phone)
+    const updates = []
+    for (const record of records) {
+        for (const master of map.get(record.phone)) {
             let existingLinks = master.getCellValue(toFieldId)
             if (existingLinks) {
                 if (existingLinks && existingLinks.map(v => v.id).includes(record.id)) {
@@ -120,9 +131,39 @@ async function addFormRecordsToMasterTable(masterTable, map) {
             }
             updates.push(update)
         }
-        await masterTable.updateRecordsAsync(updates)
     }
-    output.text(`Processed ${records.length} updates.`)
+    output.text(`Found ${updates.length} master records to be updated with links to form records.`)
+    for (let i = 0; i < updates.length; i += 50) {
+        const end = Math.min(updates.length, i + 50)
+        output.text(`Processing updates ${i+1} to ${end}...`)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
+    if (updates.length > 0) {
+        output.text(`Processed ${updates.length} update${updates.length == 1 ? "" : "s"}.`)
+    }
+}
+
+async function markDuplicateRecords(masterTable, map) {
+    const records = []
+    for (const [phone, dups] of map) {
+        if (dups.length > 1) {
+            records.push(...dups)
+        }
+    }
+    output.text(`Found ${records.length} records to mark as having duplicates.`)
+    const updates = []
+    for (const record of records) {
+        const update = {id: record.id, fields: {"fldEVYjKOxyLSYJZF": true}}
+        updates.push(update)
+    }
+    for (let i = 0; i < updates.length; i+=50) {
+        const end = Math.min(updates.length, i + 50)
+        output.text(`Processing updates ${i+1} to ${end}...`)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
+    if (updates.length > 0) {
+        output.text(`Processed ${updates.length} update${updates.length == 1 ? "" : "s"}.`)
+    }
 }
 
 // canonicalize US phone number into E.164 format
@@ -135,8 +176,7 @@ function usPhoneIntoE164(phone) {
         return "+" + digits
     }
     // yuk - this is a pretty strange phone number
-    // just return a place-holder so we group all
-    // the duplicates together
+    // just return a place-holder that won't match anything
     return "+01112223333"
 }
 
@@ -160,6 +200,7 @@ function intlPhoneIntoE164(phone) {
             return "+" + digits
         }
         // not a valid international number
+        // return a placeholder that won't match anything
         return "+009998887777"
     }
     return "+" + digits
