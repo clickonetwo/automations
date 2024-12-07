@@ -17,8 +17,17 @@ async function findRecordsWithQuestionnaireIds(masterTable) {
     let result = await masterTable.selectRecordsAsync({
         fields: ["fldHcio0hgdSJZFcn"],    // Asylum Screening Record ID for Migration
     })
-    output.text(`Found ${found.length} records to link.`)
-    return result.records.filter(r => (r.getCellValueAsString("fldHcio0hgdSJZFcn") !== ""))
+    let records = result.records.map(r => {
+        const links = r.getCellValueAsString("fldHcio0hgdSJZFcn")
+        if (!links) {
+            return {id: r.id, records: []}
+        }
+        const linksArray = links.split(", ")
+        return {id: r.id, records: linksArray}
+    })
+    records = records.filter(r => (r.records.length > 0))
+    output.text(`Found ${records.length} records to link.`)
+    return records
 }
 
 async function linkRecordsWithQuestionnaireIds(masterTable, records) {
@@ -27,10 +36,10 @@ async function linkRecordsWithQuestionnaireIds(masterTable, records) {
         const updates = []
         for (let j = i; j < records.length && j < 50; j++) {
             const record = records[j]
-            const linkId = record.getCellValueAsString("fldHcio0hgdSJZFcn")
+            const links = record.records.map(rId => ({id: rId}))
             const update = {
                 id: record.id,
-                fields: {"fldmk8m8u8nojUffm": [{id: linkId}]},
+                fields: {"fldmk8m8u8nojUffm": links},
             }
             updates.push(update)
         }
