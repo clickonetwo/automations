@@ -31,19 +31,21 @@ async function findRecordsWithQuestionnaireIds(masterTable) {
 }
 
 async function linkRecordsWithQuestionnaireIds(masterTable, records) {
-    for (let i = 0; i < records.length; i += 50) {
-        output.text(`Processing links in batch ${(i/50)+1}...`)
-        const updates = []
-        for (let j = i; j < records.length && j < 50; j++) {
-            const record = records[j]
-            const links = record.records.map(rId => ({id: rId}))
-            const update = {
-                id: record.id,
-                fields: {"fldmk8m8u8nojUffm": links},
-            }
-            updates.push(update)
+    const updates = []
+    for (const record of records) {
+        const links = record.records.map(rId => ({id: rId}))
+        const update = {
+            id: record.id,
+            fields: {"fldmk8m8u8nojUffm": links},
         }
-        await masterTable.updateRecordsAsync(updates)
+        updates.push(update)
     }
-    output.text(`Processed ${records.length} records.`)
+    for (let i = 0; i < updates.length; i += 50) {
+        const end = Math.min(updates.length, i + 50)
+        output.text(`Processing updates ${i+1} to ${end}...`)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
+    if (updates.length > 0) {
+        output.text(`Processed ${updates.length} update${updates.length == 1 ? "" : "s"}.`)
+    }
 }
