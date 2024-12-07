@@ -6,7 +6,7 @@
 
 const inputs = input.config()
 
-const fieldMap = {  // map from field IDs in Jotform table to All table
+const fieldMap = {  // map from field IDs in Jotform table to All Contacts table
     "fldds7G7kLLDhDpOU": "fldGF8G0cEoxqKgrd",   // Name
     "fldR38yGi44MzEzCd": "fldm2CYBimrY5o54y",   // Jotform Language Filled Out In
     "fldb1XkCQuY0DRPt8": "fldli2SXrunrRmRap",   // Email
@@ -46,10 +46,10 @@ async function newJotformRecordAction(base, recordId, usPhone, intlPhone) {
         await makeNewJotformMasterRecord(thisTable, masterTable, recordId, canonicalPhone)
     } else if (matching.length === 1) {
         console.log(`One matching master record found; updating it`)
-        await updateExistingJotformMasterRecord(thisTable, masterTable, matching[0], recordId)
+        await updateExistingJotformMasterRecords(thisTable, masterTable, matching, recordId)
     } else {
-        console.log(`Multiple matching master records found, updating oldest and marking all as having duplicates`)
-        await updateExistingJotformMasterRecord(thisTable, masterTable, matching[0], recordId)
+        console.log(`Multiple matching master records found, updating all and marking as duplicates`)
+        await updateExistingJotformMasterRecords(thisTable, masterTable, matching, recordId)
         await markMasterRecordsAsDuplicates(masterTable, matching)
     }
 }
@@ -69,38 +69,48 @@ async function makeNewJotformMasterRecord(thisTable, masterTable, recordId, phon
     await masterTable.createRecordAsync(targetRecordFields)
 }
 
-async function updateExistingJotformMasterRecord(thisTable, masterTable, masterRecord, newRecordId) {
-    let existingLinks = masterRecord.getCellValue("fld4GUTSNxidFqYJf")  // Jotform Contacts from Person
-    if (existingLinks) {
-        if (existingLinks && existingLinks.map(v => v.id).includes(newRecordId)) {
-            console.log(`Master record is already linked to this form; skipping update`)
-            return
-        }
-        existingLinks.push({id: newRecordId})
-    } else {
-        existingLinks = [{id: newRecordId}]
-    }
+async function updateExistingJotformMasterRecords(thisTable, masterTable, masterRecords, newRecordId) {
     const thisRecord = (await thisTable.selectRecordsAsync({
         recordIds: [newRecordId],
         fields: Object.entries(fieldMap).map(pair => pair[0])
     })).records[0]
-    const targetRecordFields = {"fld4GUTSNxidFqYJf": existingLinks}
-    for (let [srcKey, targetKey] of Object.entries(fieldMap)) {
-        const val = masterRecord.getCellValue(targetKey)
-        if (!val) {
-            targetRecordFields[targetKey] = thisRecord.getCellValue(srcKey)
+    const updates = []
+    for (const masterRecord of masterRecords) {
+        let existingLinks = masterRecord.getCellValue("fld4GUTSNxidFqYJf")  // Jotform Contacts from Person
+        if (existingLinks) {
+            if (existingLinks && existingLinks.map(v => v.id).includes(newRecordId)) {
+                console.log(`Master record ${masterRecord.id} is already linked to this form; skipping update`)
+                continue
+            }
+            existingLinks.push({id: newRecordId})
+        } else {
+            existingLinks = [{id: newRecordId}]
         }
+        const targetRecordFields = {"fld4GUTSNxidFqYJf": existingLinks}
+        for (let [srcKey, targetKey] of Object.entries(fieldMap)) {
+            const val = masterRecord.getCellValue(targetKey)
+            if (!val) {
+                targetRecordFields[targetKey] = thisRecord.getCellValue(srcKey)
+            }
+        }
+        updates.push({id: masterRecord.id, fields: targetRecordFields})
     }
-    await masterTable.updateRecordAsync(masterRecord, targetRecordFields)
+    for (let i = 0; i < updates.length; i += 50) {
+        const end = Math.min(updates.length, i + 50)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
 }
 
 async function markMasterRecordsAsDuplicates(masterTable, masterRecords) {
-    const payload = masterRecords.map((r) => ({
+    const updates = masterRecords.map((r) => ({
         id: r.id, fields: {
             "fldEVYjKOxyLSYJZF": true   // Has Duplicates?
         }
     }))
-    await masterTable.updateRecordsAsync(payload)
+    for (let i = 0; i < updates.length; i += 50) {
+        const end = Math.min(updates.length, i + 50)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
 }
 
 // takes a phone in E.164 format and formats it for display

@@ -22,10 +22,10 @@ async function newDialpadRecordAction(base, recordId, phoneNumber) {
         await makeNewDialpadMasterRecord(masterTable, recordId, phoneNumber)
     } else if (matching.length === 1) {
         console.log(`One matching master record found; updating it`)
-        await updateExistingDialpadMasterRecord(masterTable, matching[0], recordId)
+        await updateExistingDialpadMasterRecords(masterTable, matching, recordId)
     } else {
-        console.log(`Multiple matching master records found, updating oldest and marking all as having duplicates`)
-        await updateExistingDialpadMasterRecord(masterTable, matching[0], recordId)
+        console.log(`Multiple matching master records found, updating all and marking as duplicates`)
+        await updateExistingDialpadMasterRecords(masterTable, matching, recordId)
         await markMasterRecordsAsDuplicates(masterTable, matching)
     }
 }
@@ -38,27 +38,38 @@ async function makeNewDialpadMasterRecord(masterTable, recordId, phoneNumber) {
     })
 }
 
-async function updateExistingDialpadMasterRecord(masterTable, masterRecord, newRecordId) {
-    let existingLinks = masterRecord.getCellValue("flden5oBfu9Gniz2P")  // Dialpad Contacts from Person
-    if (existingLinks) {
-        if (existingLinks && existingLinks.map(v => v.id).includes(newRecordId)) {
-            console.log(`Master record is already linked to this call; skipping update`)
-            return
+async function updateExistingDialpadMasterRecords(masterTable, masterRecords, newRecordId) {
+    const updates = []
+    for (const masterRecord of masterRecords) {
+        let existingLinks = masterRecord.getCellValue("flden5oBfu9Gniz2P")  // Dialpad Contacts from Person
+        if (existingLinks) {
+            if (existingLinks && existingLinks.map(v => v.id).includes(newRecordId)) {
+                console.log(`Master record ${masterRecord.id} is already linked to this form; skipping update`)
+                continue
+            }
+            existingLinks.push({id: newRecordId})
+        } else {
+            existingLinks = [{id: newRecordId}]
         }
-        existingLinks.push({id: newRecordId})
-    } else {
-        existingLinks = [{id: newRecordId}]
+        update = {id: masterRecord.id, fields: {"flden5oBfu9Gniz2P": existingLinks}}
+        updates.push(update)
     }
-    await masterTable.updateRecordAsync(masterRecord, {"flden5oBfu9Gniz2P": existingLinks})
+    for (let i = 0; i < updates.length; i += 50) {
+        const end = Math.min(updates.length, i + 50)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
 }
 
 async function markMasterRecordsAsDuplicates(masterTable, masterRecords) {
-    const payload = masterRecords.map((r) => ({
+    const updates = masterRecords.map((r) => ({
         id: r.id, fields: {
             "fldEVYjKOxyLSYJZF": true   // Has Duplicates?
         }
     }))
-    await masterTable.updateRecordsAsync(payload)
+    for (let i = 0; i < updates.length; i += 50) {
+        const end = Math.min(updates.length, i + 50)
+        await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
 }
 
 // takes a phone in E.164 format and formats it for display
