@@ -28,7 +28,8 @@ var (
 	zone1DigitsOnly      = regexp.MustCompile(`^(?:\+?1)?(\(?\d{3}\)?\d{7})(?:\D|$)`)
 	zone1AreaTenDigits   = regexp.MustCompile(`^\([0+]?0?1?\)\((?:1|\d{3})\)(\d{10})(?:\D|$)`)
 	intlPlus             = regexp.MustCompile(`(^\(?\+0?0?[2-9]\d\d?\)?\(?\d+\)?\d+)(?:\D|$)`)
-	intlNonPlus          = regexp.MustCompile(`(^\([2-9]\d\d?\)\(?\d+\)?\d+)(?:\D|$)`)
+	intlNonPlus          = regexp.MustCompile(`(^\(0?[2-9]\d\d?\)\(?\d+\)?\d+)(?:\D|$)`)
+	intlDialingPrefix    = regexp.MustCompile(`^\(011\)(\(?\d+\)?\d+)(?:\D|$)`)
 	twoDigitCountryCodes = mapset.NewSet(
 		"20", "27",
 		"30", "31", "32", "33", "34", "36", "39",
@@ -39,6 +40,59 @@ var (
 		"81", "82", "84", "86", "87", "88",
 		"90", "91", "92", "93", "94", "95", "98",
 	)
+	statesAndAbbreviations = map[string]string{
+		"Alabama":              "AL",
+		"Alaska":               "AK",
+		"Arizona":              "AZ",
+		"Arkansas":             "AR",
+		"California":           "CA",
+		"Colorado":             "CO",
+		"Connecticut":          "CT",
+		"Delaware":             "DE",
+		"District of Columbia": "DC",
+		"Florida":              "FL",
+		"Georgia":              "GA",
+		"Hawaii":               "HI",
+		"Idaho":                "ID",
+		"Illinois":             "IL",
+		"Indiana":              "IN",
+		"Iowa":                 "IA",
+		"Kansas":               "KS",
+		"Kentucky":             "KY",
+		"Louisiana":            "LA",
+		"Maine":                "ME",
+		"Maryland":             "MD",
+		"Massachusetts":        "MA",
+		"Michigan":             "MI",
+		"Minnesota":            "MN",
+		"Mississippi":          "MS",
+		"Missouri":             "MO",
+		"Montana":              "MT",
+		"Nebraska":             "NE",
+		"Nevada":               "NV",
+		"New Hampshire":        "NH",
+		"New Jersey":           "NJ",
+		"New Mexico":           "NM",
+		"New York":             "NY",
+		"North Carolina":       "NC",
+		"North Dakota":         "ND",
+		"Ohio":                 "OH",
+		"Oklahoma":             "OK",
+		"Oregon":               "OR",
+		"Pennsylvania":         "PA",
+		"Rhode Island":         "RI",
+		"South Carolina":       "SC",
+		"South Dakota":         "SD",
+		"Tennessee":            "TN",
+		"Texas":                "TX",
+		"Utah":                 "UT",
+		"Vermont":              "VT",
+		"Virginia":             "VA",
+		"Washington":           "WA",
+		"West Virginia":        "WV",
+		"Wisconsin":            "WI",
+		"Wyoming":              "WY",
+	}
 )
 
 func cleanField(fromCol, val string, toRow map[string]string) error {
@@ -67,6 +121,10 @@ func cleanField(fromCol, val string, toRow map[string]string) error {
 		}
 	case "State / Province":
 		toRow["Migrated State"] = val
+		if valid := findValidState(val); valid != "" {
+			toRow["State"] = valid
+			toRow["Migrated State"] = ""
+		}
 	case "Preferred Language":
 		language := preferredLanguage(val)
 		if language == "" && val != "" {
@@ -139,6 +197,9 @@ func findValidPhone(s string) string {
 	if match := intlNonPlus.FindStringSubmatch(ns); match != nil {
 		return makeE164(match[1], false)
 	}
+	if match := intlDialingPrefix.FindStringSubmatch(ns); match != nil {
+		return makeE164(match[1], false)
+	}
 	return ""
 }
 
@@ -150,7 +211,12 @@ func makeE164(s string, z1 bool) string {
 		}
 		return "+1" + do
 	}
-	// international, find country code
+	// international
+	// strip leading 0*1*
+	for do[0] == '0' || do[0] == '1' {
+		do = do[1:]
+	}
+	// find country code
 	cc, rest := do[:2], do[2:]
 	if !twoDigitCountryCodes.Contains(cc) {
 		cc, rest = do[:3], do[3:]
@@ -245,6 +311,44 @@ func removalCase(s string) string {
 	}
 	if strings.HasPrefix(s, "i") {
 		return "I'm not sure"
+	}
+	return ""
+}
+
+func findValidState(s string) string {
+	ns := strings.ToLower(strings.TrimSpace(s))
+	for key, val := range statesAndAbbreviations {
+		nk, nv := strings.ToLower(key), strings.ToLower(val)
+		if ns == nv {
+			return key
+		}
+		if val != "DE" {
+			// don't allow lower case match for DE, because it's a spanish word
+			rv := regexp.MustCompile(fmt.Sprintf(`(^|\W)%s(\W|$)`, nv))
+			if rv.MatchString(ns) {
+				return key
+			}
+		}
+		if ns == nk {
+			return key
+		}
+		rk := regexp.MustCompile(fmt.Sprintf(`(^|\W)%s(\W|$)`, nk))
+		if rk.MatchString(ns) {
+			return key
+		}
+		// prefix check
+		for i := 0; i < len(ns) && i < len(nk); i++ {
+			if ns[i] == nk[i] {
+				if (i+1 == len(ns) || i+1 == len(nk)) && i >= 3 {
+					return key
+				}
+				continue
+			}
+			if i >= 4 {
+				return key
+			}
+			break
+		}
 	}
 	return ""
 }

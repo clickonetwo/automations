@@ -58,3 +58,17 @@ func TestImportAndClean(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestExtractOneField(t *testing.T) {
+	_, err := ExtractOneFieldFromFile("../../local/all-inquiries-table.csv", "frotzadoodle")
+	if err == nil {
+		t.Errorf("ExtractOneField did not fail to extract frotzadoodle")
+	}
+	data, err := ExtractOneFieldFromFile("../../local/all-inquiries-table.csv", "Submission Date")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(data, "") {
+		t.Errorf("extracted an empty Submission Date")
+	}
+}

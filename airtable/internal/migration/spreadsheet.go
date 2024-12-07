@@ -10,6 +10,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/go-test/deep"
 	"golang.org/x/text/encoding"
@@ -186,6 +187,38 @@ func ImportAndClean(r *csv.Reader, w *csv.Writer) error {
 		}
 	}
 	return nil
+}
+
+func ExtractOneField(r *csv.Reader, fromCol string) ([]string, error) {
+	_, err := r.Read()
+	if err != nil {
+		return nil, err
+	}
+	var data []string
+	for {
+		fromRow, err := nextRowFrom(r)
+		if err == io.EOF {
+			return data, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		val, ok := fromRow[fromCol]
+		if !ok {
+			return nil, fmt.Errorf("missing column: %q", fromCol)
+		}
+		data = append(data, val)
+	}
+}
+
+func ExtractOneFieldFromFile(path, name string) ([]string, error) {
+	in, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer in.Close()
+	r := BOMAwareCSVReader(in)
+	return ExtractOneField(r, name)
 }
 
 func nextRowFrom(r *csv.Reader) (map[string]string, error) {
