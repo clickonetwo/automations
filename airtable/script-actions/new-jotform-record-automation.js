@@ -6,18 +6,26 @@
 
 const inputs = input.config()
 
-const fieldMap = {  // map from field IDs in Jotform table to All Contacts table
+const stringFieldMap = {  // map from field IDs in Jotform table to All Contacts table
     "fldds7G7kLLDhDpOU": "fldGF8G0cEoxqKgrd",   // Name
-    "fldR38yGi44MzEzCd": "fldm2CYBimrY5o54y",   // Jotform Language Filled Out In
+    "fldR38yGi44MzEzCd": "fldm2CYBimrY5o54y",   // Jotform Language Filled Out
     "fldb1XkCQuY0DRPt8": "fldli2SXrunrRmRap",   // Email
     "fldmBN0iKS0y25ARO": "fldpgAXOS3LnRVb4B",   // City
+    "fld3MaagynWcu9SwU": "fldp6DqsrrskD9Kwc",   // Preferred Language (Other)
+    "fldiEt86mW7RYi80I": "fldXCH3uVyuqLEzJY",   // Service Request Information
+}
+
+const choiceFieldMap = {  // map from field IDs in Jotform table to All Contacts table
     "fldEkoLa07q0uTcja": "fld0q3mP5U6GRA1uT",   // State
     "fldMnQhmMHYE8J0bd": "fld3SiQOVVKjHrw9n",   // LGBTQ+?
     "fldvD9qaA2cIIcuBI": "fldfeDUc7AwkLAcxn",   // Preferred Language
-    "fld3MaagynWcu9SwU": "fldp6DqsrrskD9Kwc",   // Preferred Language (Other)
     "fldjlWXohDio3nRhD": "fldwmDDotAciBF8xK",   // Requested Legal Assistance
     "fld9TGWodwEhWPyKF": "fld5eDcXPls53cTjb",   // In Removal Proceedings
-    "fldiEt86mW7RYi80I": "fldXCH3uVyuqLEzJY",   // Service Request Information
+}
+
+const fieldMap = {
+    ...stringFieldMap,
+    ...choiceFieldMap,
 }
 
 await newJotformRecordAction(base, inputs.recordId, inputs.usPhone, inputs.intlPhone)
@@ -60,8 +68,11 @@ async function makeNewJotformMasterRecord(thisTable, masterTable, recordId, phon
         fields: Object.entries(fieldMap).map(pair => pair[0])
     })).records[0]
     const targetRecordFields = {}
-    for (let [srcKey, targetKey] of Object.entries(fieldMap)) {
-        targetRecordFields[targetKey] = thisRecord.getCellValue(srcKey)
+    for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
+        targetRecordFields[targetKey] = thisRecord.getCellValueAsString(srcKey)
+    }
+    for (let [srcKey, targetKey] of Object.entries(choiceFieldMap)) {
+        targetRecordFields[targetKey] = {name: thisRecord.getCellValueAsString(srcKey)}
     }
     targetRecordFields["fld4lEBvUftT8MoGs"] = phoneNumber,               // E.164 Number
     targetRecordFields["fld4GUTSNxidFqYJf"] = [{id: recordId}],          // Jotform Contacts from Person
@@ -87,10 +98,16 @@ async function updateExistingJotformMasterRecords(thisTable, masterTable, master
             existingLinks = [{id: newRecordId}]
         }
         const targetRecordFields = {"fld4GUTSNxidFqYJf": existingLinks}
-        for (let [srcKey, targetKey] of Object.entries(fieldMap)) {
+        for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
             const val = masterRecord.getCellValue(targetKey)
             if (!val) {
-                targetRecordFields[targetKey] = thisRecord.getCellValue(srcKey)
+                targetRecordFields[targetKey] = thisRecord.getCellValueAsString(srcKey)
+            }
+        }
+        for (let [srcKey, targetKey] of Object.entries(choiceFieldMap)) {
+            const val = masterRecord.getCellValue(targetKey)
+            if (!val) {
+                targetRecordFields[targetKey] = {name: thisRecord.getCellValueAsString(srcKey)}
             }
         }
         updates.push({id: masterRecord.id, fields: targetRecordFields})
