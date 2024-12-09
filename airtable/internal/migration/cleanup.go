@@ -123,7 +123,6 @@ func cleanField(fromCol, val string, toRow map[string]string) error {
 		toRow["Migrated State"] = val
 		if valid := findValidState(val); valid != "" {
 			toRow["State"] = valid
-			toRow["Migrated State"] = ""
 		}
 	case "Preferred Language":
 		language := preferredLanguage(val)
@@ -344,7 +343,7 @@ func findValidState(s string) string {
 				}
 				continue
 			}
-			if i >= 4 {
+			if i >= 5 {
 				return key
 			}
 			break
