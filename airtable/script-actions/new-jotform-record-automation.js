@@ -72,7 +72,10 @@ async function makeNewJotformMasterRecord(thisTable, masterTable, recordId, phon
         targetRecordFields[targetKey] = thisRecord.getCellValueAsString(srcKey)
     }
     for (let [srcKey, targetKey] of Object.entries(choiceFieldMap)) {
-        targetRecordFields[targetKey] = {name: thisRecord.getCellValueAsString(srcKey)}
+        const val = thisRecord.getCellValueAsString(srcKey)
+        if (val) {
+            targetRecordFields[targetKey] = {name: val}
+        }
     }
     targetRecordFields["fld4lEBvUftT8MoGs"] = phoneNumber,               // E.164 Number
     targetRecordFields["fld4GUTSNxidFqYJf"] = [{id: recordId}],          // Jotform Contacts from Person
@@ -105,9 +108,12 @@ async function updateExistingJotformMasterRecords(thisTable, masterTable, master
             }
         }
         for (let [srcKey, targetKey] of Object.entries(choiceFieldMap)) {
-            const val = masterRecord.getCellValue(targetKey)
-            if (!val) {
-                targetRecordFields[targetKey] = {name: thisRecord.getCellValueAsString(srcKey)}
+            const mval = masterRecord.getCellValue(targetKey)
+            if (!mval) {
+                const val = thisRecord.getCellValueAsString(srcKey)
+                if (val) {
+                    targetRecordFields[targetKey] = {name: val}
+                }
             }
         }
         updates.push({id: masterRecord.id, fields: targetRecordFields})
