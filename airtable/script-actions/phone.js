@@ -33,7 +33,7 @@ function formatPhone(phone) {
         suffix = suffix.substring(0, suffix.length - 4);
     }
     for (let i = suffix.length; i > 3; i = i - 3) {
-        suffix = suffix.substring(0, i) + "-" + suffix.substring(i-3, i)
+        suffix = suffix.substring(0, i-3) + "-" + suffix.substring(i-3, i)
     }
     return prefix + "-" + suffix + suffixSuffix;
 }
