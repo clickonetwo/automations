@@ -38,6 +38,14 @@ function formatPhone(phone) {
     return prefix + "-" + suffix + suffixSuffix;
 }
 
+// format any phone into E.164 format
+function anyPhoneIntoE164(phone) {
+    if (phone.indexOf("+") >= 0 && phone.indexOf("+1") === -1) {
+        return intlPhoneIntoE164(phone)
+    }
+    return usPhoneIntoE164(phone)
+}
+
 // canonicalize US phone number into E.164 format
 function usPhoneIntoE164(phone) {
     let digits = phone.replace(/\D/g,'')
@@ -64,7 +72,7 @@ function intlPhoneIntoE164(phone) {
         digits = digits.substring(1)
     }
     if (digits.length < 8) {
-        // not a valid number, return place holder
+        // not a valid number, return placeholder
         return "+009998887777"
     }
     if (digits.charAt(0) === "1") {

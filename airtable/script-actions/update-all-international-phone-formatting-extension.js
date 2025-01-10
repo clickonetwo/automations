@@ -1,5 +1,3 @@
-// noinspection DuplicatedCode
-
 /*
  * Copyright 2024-2025 Daniel C. Brotsky. All rights reserved.
  * All the copyrighted work in this repository is licensed under the
@@ -15,7 +13,7 @@ async function updateInternationalPhoneExtension() {
 }
 
 async function findRecordsWithInternationalPhones(masterTable) {
-    output.text(`Finding records with internaional phones...`)
+    output.text(`Finding records with international phones...`)
     let result = await masterTable.selectRecordsAsync({
         fields: ["fld4lEBvUftT8MoGs"],    // E.164 number
     })
