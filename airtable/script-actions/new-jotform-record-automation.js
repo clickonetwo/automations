@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Daniel C. Brotsky. All rights reserved.
+ * Copyright 2024-2025 Daniel C. Brotsky. All rights reserved.
  * All the copyrighted work in this repository is licensed under the
  * open source MIT License, reproduced in the LICENSE file.
  */
@@ -72,7 +72,10 @@ async function makeNewJotformMasterRecord(thisTable, masterTable, recordId, phon
         targetRecordFields[targetKey] = thisRecord.getCellValueAsString(srcKey)
     }
     for (let [srcKey, targetKey] of Object.entries(choiceFieldMap)) {
-        targetRecordFields[targetKey] = {name: thisRecord.getCellValueAsString(srcKey)}
+        const val = thisRecord.getCellValueAsString(srcKey)
+        if (val) {
+            targetRecordFields[targetKey] = {name: val}
+        }
     }
     targetRecordFields["fld4lEBvUftT8MoGs"] = phoneNumber,               // E.164 Number
     targetRecordFields["fld4GUTSNxidFqYJf"] = [{id: recordId}],          // Jotform Contacts from Person
@@ -105,9 +108,12 @@ async function updateExistingJotformMasterRecords(thisTable, masterTable, master
             }
         }
         for (let [srcKey, targetKey] of Object.entries(choiceFieldMap)) {
-            const val = masterRecord.getCellValue(targetKey)
-            if (!val) {
-                targetRecordFields[targetKey] = {name: thisRecord.getCellValueAsString(srcKey)}
+            const mval = masterRecord.getCellValue(targetKey)
+            if (!mval) {
+                const val = thisRecord.getCellValueAsString(srcKey)
+                if (val) {
+                    targetRecordFields[targetKey] = {name: val}
+                }
             }
         }
         updates.push({id: masterRecord.id, fields: targetRecordFields})
@@ -159,7 +165,7 @@ function formatPhone(phone) {
         suffix = suffix.substring(0, suffix.length - 4);
     }
     for (let i = suffix.length; i > 3; i = i - 3) {
-        suffix = suffix.substring(0, i) + "-" + suffix.substring(i-3, i)
+        suffix = suffix.substring(0, i-3) + "-" + suffix.substring(i-3)
     }
     return prefix + "-" + suffix + suffixSuffix;
 }
