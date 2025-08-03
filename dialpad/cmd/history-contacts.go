@@ -43,8 +43,8 @@ This command allows managing that list of contacts.`,
 func init() {
 	historyCmd.AddCommand(historyContactsCmd)
 	historyContactsCmd.Args = cobra.NoArgs
-	historyContactsCmd.Flags().Count("update", "update users from Dialpad")
-	historyContactsCmd.Flags().String("export", "", "export users to path")
+	historyContactsCmd.Flags().Count("update", "update contacts from Dialpad")
+	historyContactsCmd.Flags().String("export", "", "export contacts to the specified path")
 	historyContactsCmd.MarkFlagsOneRequired("update", "export")
 }
 
