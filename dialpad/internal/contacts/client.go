@@ -23,9 +23,9 @@ import (
 
 var (
 	DialpadApiRoot      = "https://dialpad.com/api/v2"
-	DialPadListClient   = NewRLHTTPClient(1200, 60)
+	DialPadListClient   = NewRLHTTPClient(12, 65)
 	DialPadUpdateClient = NewRLHTTPClient(100, 60)
-	DialPadDeleteClient = NewRLHTTPClient(1200, 60)
+	DialPadDeleteClient = NewRLHTTPClient(20, 1)
 )
 
 type entryPage struct {
@@ -35,7 +35,7 @@ type entryPage struct {
 
 func ListContacts(accountId string) (results []Entry, errs []error) {
 	key := storage.GetConfig().DialpadApiKey
-	baseUrl := fmt.Sprintf("%s/contacts?limit=200&apikey=%s", DialpadApiRoot, key)
+	baseUrl := fmt.Sprintf("%s/contacts?limit=100&apikey=%s", DialpadApiRoot, key)
 	if accountId != "" {
 		baseUrl = fmt.Sprintf("%s&accountId=%s", baseUrl, accountId)
 	}
@@ -63,6 +63,9 @@ func ListContacts(accountId string) (results []Entry, errs []error) {
 		resp.Body.Close()
 		if resp.StatusCode != 200 {
 			err := fmt.Errorf("status code: %d, body: %s", resp.StatusCode, body)
+			//if strings.Contains(string(body), "\"limit\"") {
+			//	time.Sleep(time.Second * 10)
+			//}
 			errs = append(errs, err)
 			continue
 		}

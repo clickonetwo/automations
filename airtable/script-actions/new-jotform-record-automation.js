@@ -23,6 +23,17 @@ const choiceFieldMap = {  // map from field IDs in Jotform table to All Contacts
     "fld9TGWodwEhWPyKF": "fld5eDcXPls53cTjb",   // In Removal Proceedings
 }
 
+const historyField = "fld3ErU61cr0hIUs2"   // Jotform Contact History
+
+const preservedFieldsList = [  // fields to preserve in the history field
+    "fldNXsbL7u6kLJ0xB",   // Submission date
+    "fldYABuy9p5wtCmIO",   // Date of Connection
+    "fldkAPmQXnxKTZ3yg",   // Connection Result
+    "flduadcGjBi8HdWDP",   // Ineligible Reason
+    "fldiOS0sgJB9tbTU1",   // Front Desk Notes
+    "fldXCH3uVyuqLEzJY",   // Service Request Information
+]
+
 const fieldMap = {
     ...stringFieldMap,
     ...choiceFieldMap,
@@ -45,6 +56,8 @@ async function newJotformRecordAction(base, recordId, usPhone, intlPhone) {
             "fld4lEBvUftT8MoGs",    // E.164 Number
             "fld4GUTSNxidFqYJf",    // Jotform Contacts from Person
             ...masterDataFields,
+            ...preservedFieldsList,
+            historyField,
         ],
         sorts: [{field: "fldA1vt9a0BtASfib", direction: 'asc'}],    // Created date
     })
@@ -90,8 +103,10 @@ async function updateExistingJotformMasterRecords(thisTable, masterTable, master
     })).records[0]
     const updates = []
     for (const masterRecord of masterRecords) {
+        let havePriorForms = false
         let existingLinks = masterRecord.getCellValue("fld4GUTSNxidFqYJf")  // Jotform Contacts from Person
         if (existingLinks) {
+            havePriorForms = true
             if (existingLinks && existingLinks.map(v => v.id).includes(newRecordId)) {
                 console.log(`Master record ${masterRecord.id} is already linked to this form; skipping update`)
                 continue
@@ -101,18 +116,35 @@ async function updateExistingJotformMasterRecords(thisTable, masterTable, master
             existingLinks = [{id: newRecordId}]
         }
         const targetRecordFields = {"fld4GUTSNxidFqYJf": existingLinks}
+        let newHistoryValue = havePriorForms ? computeNewHistory(masterRecord) : ""
+        if (newHistoryValue) {
+            targetRecordFields[historyField] = newHistoryValue
+            // having preserved the data, clear the preserved fields
+            targetRecordFields[preservedFieldsList[1]] = ""
+            targetRecordFields[preservedFieldsList[2]] = []
+            targetRecordFields[preservedFieldsList[3]] = []
+            targetRecordFields[preservedFieldsList[4]] = ""
+        }
+        // update the submission date to pop this to the top of the incoming list
+        targetRecordFields[preservedFieldsList[0]] = new Date().toISOString()
         for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
-            const val = masterRecord.getCellValue(targetKey)
-            if (!val) {
-                targetRecordFields[targetKey] = thisRecord.getCellValueAsString(srcKey)
+            const oldVal = masterRecord.getCellValueAsString(targetKey)
+            let newVal = thisRecord.getCellValueAsString(srcKey)
+            if (havePriorForms || (newVal && !oldVal)) {
+                targetRecordFields[targetKey] = newVal
             }
         }
         for (let [srcKey, targetKey] of Object.entries(choiceFieldMap)) {
-            const mval = masterRecord.getCellValue(targetKey)
-            if (!mval) {
-                const val = thisRecord.getCellValueAsString(srcKey)
-                if (val) {
-                    targetRecordFields[targetKey] = {name: val}
+            // NOTE: even though the source field is a multi-select, it will only have
+            // one value in it, so we can just get the value as a string. It's a
+            // multi-select so the Make action can treat it that way while filling one value.
+            const oldChoice = masterRecord.getCellValueAsString(targetKey)
+            const newChoice = thisRecord.getCellValueAsString(srcKey)
+            if (havePriorForms || (newChoice && !oldChoice)) {
+                if (newChoice) {
+                    targetRecordFields[targetKey] = {name: newChoice}
+                } else {
+                    targetRecordFields[targetKey] = null
                 }
             }
         }
@@ -134,6 +166,47 @@ async function markMasterRecordsAsDuplicates(masterTable, masterRecords) {
         const end = Math.min(updates.length, i + 50)
         await masterTable.updateRecordsAsync(updates.slice(i, end))
     }
+}
+
+function computeNewHistory(record) {
+    let existingHistory = record.getCellValueAsString(historyField)
+    let submissionDate = record.getCellValueAsString(preservedFieldsList[0])
+    let connectionDate = record.getCellValueAsString(preservedFieldsList[1])
+    let connectionResult = record.getCellValueAsString(preservedFieldsList[2])
+    let ineligibleReasons = record.getCellValueAsString(preservedFieldsList[3])
+    let frontDeskNotes = record.getCellValueAsString(preservedFieldsList[4])
+    let serviceRequestInfo = record.getCellValueAsString(preservedFieldsList[5])
+    if (!connectionDate && !connectionResult && !frontDeskNotes) {
+        console.log(`Prior form exists but no connection info; skipping history update`)
+        return ""
+    }
+    console.log(`Prior form exists and connection info exists; updating history`)
+    let newHistory = "Prior Submission Date: " + submissionDate + "\n"
+    if (connectionDate) {
+        newHistory += "Prior Connection Date:\n" + connectionDate + "\n"
+    }
+    if (connectionResult) {
+        newHistory += "Prior Connection Result:\n" + connectionResult + "\n"
+    }
+    if (ineligibleReasons) {
+        newHistory += "Ineligible Reasons:\n" + ineligibleReasons + "\n"
+    }
+    if (frontDeskNotes) {
+        newHistory += "Front Desk Notes:\n" + frontDeskNotes
+        if (!newHistory.endsWith("\n")) {
+            newHistory += "\n"
+        }
+    }
+    if (serviceRequestInfo) {
+        newHistory += "Service Request Information:\n" + serviceRequestInfo
+        if (!newHistory.endsWith("\n")) {
+            newHistory += "\n"
+        }
+    }
+    if (existingHistory) {
+        newHistory += "\n====================\n" + existingHistory
+    }
+    return newHistory
 }
 
 // takes a phone in E.164 format and formats it for display
