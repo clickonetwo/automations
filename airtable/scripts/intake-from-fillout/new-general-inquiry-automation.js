@@ -8,7 +8,7 @@
 const masterNamedFieldMap = {
     canonicalPhone: "fld4lEBvUftT8MoGs",        // E.164 Phone Number
     formattedPhone: "fld1CNjHs3PRuqCok",        // Phone
-    conflicts: "fldcohpR70JZIqqEl",             // Additional Data
+    conflicts: "fldcohpR70JZIqqEl",             // Additional Form Submission Info
     infoLinks: "fldjfWfWjsv40TKAw",             // General Inquiry Form
     multiLink: "fldEVYjKOxyLSYJZF",             // Has Duplicates?
     initialDate: "fldNXsbL7u6kLJ0xB",           // Submission Date
@@ -32,23 +32,24 @@ const stringFieldMap = {  // map from field IDs in General Inquiry Form table to
     "fldW3vEpJ2R7RnfFE": "fldXCH3uVyuqLEzJY",   // Assistance/Request -> Service Request Information
 }
 
-const multiChoiceFieldMap = {    // map from field IDs in General Inquiry Form table to All Contacts table
-    "fldUYF8hIEBLdfLaH": "fldRrH5d7z3uTxdQD",   // Pronouns -> Pronouns
-}
-
 const singleChoiceFieldMap = {  // map from field IDs in General Inquiry Form table to All Contacts table
     "fldbL2M482evbXy1C": "fldfeDUc7AwkLAcxn",   // Preferred Language -> Preferred Language
     "fldcMicusItnPJAld": "fld0q3mP5U6GRA1uT",   // State -> State
     "fldnBRerNM3AvLNmr": "fld3SiQOVVKjHrw9n",   // Do you identify as LGBTQ+? -> LGBTQ+?
 }
+
+const multiChoiceFieldMap = {    // map from field IDs in General Inquiry Form table to All Contacts table
+    "fldUYF8hIEBLdfLaH": "fldRrH5d7z3uTxdQD",   // Pronouns -> Pronouns
+}
+
 const attachmentFieldMap = {  // map from field IDs in General Inquiry Form table to All Contacts table
     "fldmI6bv1pJgyr0ki": "fldtWTfL7aLfTjMLd",   // Documents -> Documents Provided
 }
 
 const fieldMap = {
     ...stringFieldMap,
-    ...multiChoiceFieldMap,
     ...singleChoiceFieldMap,
+    ...multiChoiceFieldMap,
     ...attachmentFieldMap,
 }
 
