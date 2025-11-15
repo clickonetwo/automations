@@ -17,7 +17,15 @@ function formatPhone(phone) {
     ]
     if (phone.startsWith("+1")) {
         // Zone 1
-        return `(${phone.substring(2,5)}) ${phone.substring(5,8)}-${phone.substring(8,12)}`;
+        if (phone.length < 12) {
+            return "invalid"
+        }
+        const part1 = `(${phone.substring(2,5)}) ${phone.substring(5,8)}-${phone.substring(8,12)}`
+        if (phone.length === 12) {
+            return part1
+        } else {
+            return part1 + " x" + phone.substring(12)
+        }
     }
     // international
     let prefix = phone.substring(0, 3);
@@ -38,50 +46,11 @@ function formatPhone(phone) {
     return prefix + "-" + suffix + suffixSuffix;
 }
 
-// format any phone into E.164 format
-function anyPhoneIntoE164(phone) {
-    if (phone.indexOf("+") >= 0 && phone.indexOf("+1") === -1) {
-        return intlPhoneIntoE164(phone)
+// takes a flexibly-formatted number that starts with '+' and strips non-digits
+function canonicalizePhone(phone) {
+    if (!phone.startsWith("+")) {
+        throw new Error(`Form phone number '${phone}' is invalid.`)
     }
-    return usPhoneIntoE164(phone)
-}
-
-// canonicalize US phone number into E.164 format
-function usPhoneIntoE164(phone) {
-    let digits = phone.replace(/\D/g,'')
-    if (digits.length === 10) {
-        return "+1" + digits
-    }
-    if (digits.length === 11 && digits.charAt(0) === "1") {
-        return "+" + digits
-    }
-    // yuk - this is a pretty strange phone number
-    // just return a place-holder so we group all
-    // the duplicates together
-    return "+01112223333"
-}
-
-// canonicalize international phone number into E.164 format
-function intlPhoneIntoE164(phone) {
-    let digits = phone.replace(/\D/g,'')
-    if (digits.startsWith("001")) {
-        // strip the international dialing prefix
-        digits = digits.substring(3)
-    }
-    while (digits.charAt(0) === "0") {
-        digits = digits.substring(1)
-    }
-    if (digits.length < 8) {
-        // not a valid number, return placeholder
-        return "+009998887777"
-    }
-    if (digits.charAt(0) === "1") {
-        // this is a Zone 1 number - perhaps they are in the Caribbean?
-        if (digits.length === 11) {
-            return "+" + digits
-        }
-        // not a valid international number
-        return "+009998887777"
-    }
+    let digits = phone.replace(/\D/g,'');
     return "+" + digits
 }
