@@ -8,6 +8,7 @@
 const masterNamedFieldMap = {
     conflicts: "fldcohpR70JZIqqEl",             // Additional Form Submission Info
     asylumLinks: "fldTRnUG4ESOqteAg",           // Asylum Screening Form
+    linkId: "fldBGO1zn0kcOYNEd",                // Asylum Screening Link ID
 }
 
 const formNamedFieldMap = {
@@ -65,6 +66,13 @@ async function newAsylumScreeningRecordAction() {
     let masterRecord = await masterTable.selectRecordAsync(masterRecordId);
     if (!masterRecord) {
         throw new Error(`Form refers to master record ${masterRecordId}, but it doesn't exist`)
+    }
+    const hook = "https://hook.us1.make.com/h61316aga8y1rjfwkweqkz6rpjqtbo81"
+    const linkId = masterRecord.getCellValue(masterNamedFieldMap.linkId)
+    if (linkId) {
+        await triggerLinkUpdate(hook, masterRecordId, linkId)
+    } else {
+        console.warn(`Form refers to master record ${masterRecordId}, but it has no link to update`)
     }
     await updateExistingMasterRecord(masterRecord)
 }
@@ -154,5 +162,24 @@ async function markMasterRecordsAsDuplicates(masterTable, masterRecords) {
     for (let i = 0; i < updates.length; i += 50) {
         const end = Math.min(updates.length, i + 50)
         await masterTable.updateRecordsAsync(updates.slice(i, end))
+    }
+}
+
+async function triggerLinkUpdate(hook, recordId, linkId) {
+    console.log(`Requesting reset of link '${linkId}' from record ${recordId}...`);
+    const response = await fetch(hook, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            recordId: recordId,
+            shortLinkId: linkId
+        })
+    }).catch((error) => {
+        console.error("Error sending request to make:", error);
+    })
+    if (response) {
+        console.log(`Response code from make is ${response.status}`);
     }
 }

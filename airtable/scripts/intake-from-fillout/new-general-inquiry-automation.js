@@ -12,6 +12,7 @@ const masterNamedFieldMap = {
     infoLinks: "fldjfWfWjsv40TKAw",             // General Inquiry Form
     multiLink: "fldEVYjKOxyLSYJZF",             // Has Duplicates?
     initialDate: "fldNXsbL7u6kLJ0xB",           // Submission Date
+    linkId: "fldXwcQ5eeBHMsN4K",                // General Info Link ID
 }
 
 const formNamedFieldMap = {
@@ -78,6 +79,13 @@ async function newGeneralInfoRecordAction() {
         let masterRecord = await masterTable.selectRecordAsync(masterRecordId);
         if (!masterRecord) {
             throw new Error(`Form refers to master record ${masterRecordId}, but it doesn't exist`)
+        }
+        const hook = "https://hook.us1.make.com/8gu8l8h6jxnnbh5tejhmptfrfeuypppy"
+        const linkId = masterRecord.getCellValue(masterNamedFieldMap.linkId)
+        if (linkId) {
+            await triggerLinkUpdate(hook, masterRecordId, linkId)
+        } else {
+            console.warn(`Form refers to master record ${masterRecordId}, but it has no link to update`)
         }
         await updateExistingMasterRecords([masterRecord])
         return
@@ -280,4 +288,23 @@ function canonicalizePhone(phone) {
     }
     let digits = phone.replace(/\D/g,'');
     return "+" + digits
+}
+
+async function triggerLinkUpdate(hook, recordId, linkId) {
+    console.log(`Requesting reset of link '${linkId}' from record ${recordId}...`);
+    const response = await fetch(hook, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            recordId: recordId,
+            shortLinkId: linkId
+        })
+    }).catch((error) => {
+        console.error("Error sending request to make:", error);
+    })
+    if (response) {
+        console.log(`Response code from make is ${response.status}`);
+    }
 }
