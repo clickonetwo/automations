@@ -54,12 +54,12 @@ const fieldMap = {
 }
 
 // Script invocation (as automation)
-const formTable = base.getTable("tblYKtj0Hhl6e5Wti")
-const masterTable = base.getTable("tblsnJnJ4ubpZFLwq")
+const formTable = base.getTable("tblYKtj0Hhl6e5Wti")    // General Inquiry Form Table
+const masterTable = base.getTable("tblsnJnJ4ubpZFLwq")  // All Contacts Master Table
 const { formRecordId } = input.config()
 const formRecord = await formTable.selectRecordAsync(formRecordId)
 if (!formRecord) {
-    throw new Error(`No form record exists for ID ${formRecordId}`)
+    throw new Error(`No general inquiry form record exists for ID ${formRecordId}`)
 }
 const { masterRecordId, e164Phone } = await extractMatchData()
 await newGeneralInfoRecordAction()
@@ -150,14 +150,14 @@ async function makeNewMasterRecord() {
 async function updateExistingMasterRecords(masterRecords) {
     const updates = []
     for (const masterRecord of masterRecords) {
-        const links = masterRecord.getCellValue(masterNamedFieldMap.infoLinks) || []
-        const existingLinks = links.map(l => ({ id: l.id }))
-        if (existingLinks.map(l => l.id).includes(formRecordId)) {
+        let links = masterRecord.getCellValue(masterNamedFieldMap.infoLinks) || []
+        links = links.map(l => ({ id: l.id }))
+        if (links.map(l => l.id).includes(formRecordId)) {
             console.warn(`Master record ${masterRecordId} already linked to this form; skipping update.`)
             continue
         }
-        existingLinks.push({ id: formRecordId })
-        const masterFields = { [masterNamedFieldMap.infoLinks]: existingLinks }
+        links.push({ id: formRecordId })
+        const masterFields = { [masterNamedFieldMap.infoLinks]: links }
         let conflicts = ""
         for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
             const master = masterRecord.getCellValueAsString(targetKey)
