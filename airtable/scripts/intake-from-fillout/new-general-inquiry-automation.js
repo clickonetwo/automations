@@ -112,6 +112,7 @@ async function newGeneralInfoRecordAction() {
         let masterFetchFields = [
             masterNamedFieldMap.infoLinks,
             masterNamedFieldMap.conflicts,
+            masterNamedFieldMap.canonicalPhone,
             ...Object.entries(fieldMap).map(pair => pair[1])
         ]
         const records = await masterTable.selectRecordsAsync({
@@ -158,15 +159,28 @@ async function makeNewMasterRecord() {
 async function updateExistingMasterRecords(masterRecords) {
     const updates = []
     for (const masterRecord of masterRecords) {
+        const masterFields = {}
         let links = masterRecord.getCellValue(masterNamedFieldMap.infoLinks) || []
         links = links.map(l => ({ id: l.id }))
         if (links.map(l => l.id).includes(formRecordId)) {
-            console.warn(`Master record ${masterRecordId} already linked to this form; skipping update.`)
-            continue
+            console.log(`Master record ${masterRecordId} already linked to this form`)
+        } else {
+            console.log(`Adding form link to master record ${masterRecordId}`)
+            links.push({ id: formRecordId })
+            masterFields[masterNamedFieldMap.infoLinks] = links
         }
-        links.push({ id: formRecordId })
-        const masterFields = { [masterNamedFieldMap.infoLinks]: links }
         let conflicts = ""
+        // special logic for the phone number, because it's been canonicalized
+        const masterCanonicalPhone = masterRecord.getCellValueAsString(masterNamedFieldMap.canonicalPhone)
+        if (masterCanonicalPhone === e164Phone) {
+        } else if (!masterCanonicalPhone) {
+            masterFields[masterNamedFieldMap.canonicalPhone] = e164Phone
+            masterFields[masterNamedFieldMap.formattedPhone] = formatPhone(e164Phone)
+        } else {
+            const fieldName = masterTable.getField(masterNamedFieldMap.canonicalPhone).name
+            conflicts += `\t${fieldName}: ${e164Phone}`
+        }
+        // standard logic for every other matching field, specific to field type
         for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
             const master = masterRecord.getCellValueAsString(targetKey)
             const form = formRecord.getCellValueAsString(srcKey)
@@ -218,7 +232,11 @@ async function updateExistingMasterRecords(masterRecords) {
             const header = `Additional general inquiry data submitted ${timestamp}:`
             masterFields[masterNamedFieldMap.conflicts] = `${header}\n${conflicts}\n${master}`
         }
-        updates.push({id: masterRecord.id, fields: masterFields})
+        if (Object.keys(masterFields).length) {
+            updates.push({id: masterRecord.id, fields: masterFields})
+        } else {
+            console.warn(`Asylum Screening form ${formRecordId} had no additional information.`)
+        }
     }
     // console.log(updates.length ? JSON.stringify(updates, null, 2) : "No updates")
     for (let i = 0; i < updates.length; i += 50) {
