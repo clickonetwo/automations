@@ -17,6 +17,8 @@ const formNamedFieldMap = {
 }
 
 const stringFieldMap = {  // map from field IDs in Asylum Screening Form table to All Contacts table
+    "fldgrzsoSDC41zvUs": "fldG8MGdqTySJhHJ4",   // Preferred Name -> Preferred Name
+    "fldlQlkYznc9z9uId": "flddEBS3pVsatT6Zh",   // A Number -> A Number
     "fldrCDTE7PYGibJOR": "fld1NoEE1EB3ckLFW",   // Questions/Additional Info -> Questions (Asylum Screening)
 }
 
@@ -34,6 +36,7 @@ const singleChoiceFieldMap = {  // map from field IDs in Asylum Screening Form t
 }
 
 const multiChoiceFieldMap = {    // map from field IDs in Asylum Screening Form table to All Contacts table
+    "fldU3PLanlmM5yXDl": "fldRrH5d7z3uTxdQD",   // Pronouns -> Pronouns
 }
 
 const attachmentFieldMap = {  // map from field IDs in Asylum Screening Form table to All Contacts table
