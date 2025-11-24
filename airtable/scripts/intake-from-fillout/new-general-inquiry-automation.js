@@ -8,10 +8,11 @@
 const masterNamedFieldMap = {
     canonicalPhone: "fld4lEBvUftT8MoGs",        // E.164 Phone Number
     formattedPhone: "fld1CNjHs3PRuqCok",        // Phone
-    conflicts: "fldcohpR70JZIqqEl",             // Additional Form Submission Info
+    conflicts: "fldcohpR70JZIqqEl",             // Additional General Inquiry Submission Info
     infoLinks: "fldjfWfWjsv40TKAw",             // General Inquiry Form
     multiLink: "fldEVYjKOxyLSYJZF",             // Has Duplicates?
     initialDate: "fldNXsbL7u6kLJ0xB",           // Submission Date
+    link: "fldnBfsb2vLkvNtoM",                  // General Info Link
     linkId: "fldXwcQ5eeBHMsN4K",                // General Info Link ID
 }
 
@@ -125,7 +126,8 @@ async function newGeneralInfoRecordAction() {
 }
 
 async function makeNewMasterRecord() {
-    const masterFields = {}
+    // a form has been submitted against this record
+    const masterFields = { [masterNamedFieldMap.link]: "Submitted" }
     for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
         masterFields[targetKey] = formRecord.getCellValueAsString(srcKey)
     }
@@ -159,7 +161,8 @@ async function makeNewMasterRecord() {
 async function updateExistingMasterRecords(masterRecords) {
     const updates = []
     for (const masterRecord of masterRecords) {
-        const masterFields = {}
+        // a form has been submitted against this record
+        const masterFields = { [masterNamedFieldMap.link]: "Submitted" }
         let links = masterRecord.getCellValue(masterNamedFieldMap.infoLinks) || []
         links = links.map(l => ({ id: l.id }))
         if (links.map(l => l.id).includes(formRecordId)) {
@@ -178,7 +181,7 @@ async function updateExistingMasterRecords(masterRecords) {
             masterFields[masterNamedFieldMap.formattedPhone] = formatPhone(e164Phone)
         } else {
             const fieldName = masterTable.getField(masterNamedFieldMap.canonicalPhone).name
-            conflicts += `\t${fieldName}: ${e164Phone}`
+            conflicts += `\t${fieldName}: ${e164Phone}\n`
         }
         // standard logic for every other matching field, specific to field type
         for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
@@ -232,13 +235,8 @@ async function updateExistingMasterRecords(masterRecords) {
             const header = `Additional general inquiry data submitted ${timestamp}:`
             masterFields[masterNamedFieldMap.conflicts] = `${header}\n${conflicts}\n${master}`
         }
-        if (Object.keys(masterFields).length) {
-            updates.push({id: masterRecord.id, fields: masterFields})
-        } else {
-            console.warn(`Asylum Screening form ${formRecordId} had no additional information.`)
-        }
+        updates.push({id: masterRecord.id, fields: masterFields})
     }
-    // console.log(updates.length ? JSON.stringify(updates, null, 2) : "No updates")
     for (let i = 0; i < updates.length; i += 50) {
         const end = Math.min(updates.length, i + 50)
         await masterTable.updateRecordsAsync(updates.slice(i, end))

@@ -6,8 +6,9 @@
 
 // Global definitions
 const masterNamedFieldMap = {
-    conflicts: "fldcohpR70JZIqqEl",             // Additional Form Submission Info
+    conflicts: "fldQky7MN4M6Qjqak",             // Additional Asylum Screening Submission Info
     asylumLinks: "fldTRnUG4ESOqteAg",           // Asylum Screening Form
+    link: "fldumcuGachcsbTsl",                  // Asylum Screening Link
     linkId: "fldBGO1zn0kcOYNEd",                // Asylum Screening Link ID
 }
 
@@ -81,8 +82,8 @@ async function newAsylumScreeningRecordAction() {
 }
 
 async function updateExistingMasterRecord(masterRecord) {
-    const multiForms = masterRecord.getCellValue(masterNamedFieldMap.asylumLinks)?.length !== 1
-    const masterFields = {}
+    // a form has been submitted against this record
+    const masterFields = { [masterNamedFieldMap.link]: "Submitted" }
     let conflicts = ""
     for (let [srcKey, targetKey] of Object.entries(stringFieldMap)) {
         const master = masterRecord.getCellValueAsString(targetKey)
@@ -146,26 +147,7 @@ async function updateExistingMasterRecord(masterRecord) {
         const header = `Additional asylum screening data submitted ${timestamp}:`
         masterFields[masterNamedFieldMap.conflicts] = `${header}\n${conflicts}\n${master}`
     }
-    if (Object.keys(masterFields).length) {
-        await masterTable.updateRecordAsync(masterRecord.id, masterFields)
-        if (multiForms && conflicts) {
-            throw new Error(`Conflicting asylum screening forms for master record ${masterRecordId}`)
-        }
-    } else {
-        console.warn(`Asylum Screening form ${formRecordId} had no additional information.`)
-    }
-}
-
-async function markMasterRecordsAsDuplicates(masterTable, masterRecords) {
-    const updates = masterRecords.map((r) => ({
-        id: r.id,
-        fields: { [masterNamedFieldMap.multiLink]: true },
-    }))
-    console.log(JSON.stringify(updates, null, 2))
-    for (let i = 0; i < updates.length; i += 50) {
-        const end = Math.min(updates.length, i + 50)
-        await masterTable.updateRecordsAsync(updates.slice(i, end))
-    }
+    await masterTable.updateRecordAsync(masterRecord.id, masterFields)
 }
 
 async function triggerLinkUpdate(hook, recordId, linkId) {
