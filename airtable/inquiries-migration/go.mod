@@ -1,4 +1,4 @@
-module github.com/clickonetwo/automations/airtable
+module github.com/clickonetwo/automations/airtable/inquiries-migration
 
 go 1.23.3
 
