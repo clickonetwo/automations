@@ -7,12 +7,20 @@ declare module 'airtable_internal' {
         interface Input {
             config(): { [key: string]: any },
         }
+        // noinspection JSUnusedGlobalSymbols
+        const input: Input
+
+        interface Output {
+            text(text: string): void,
+        }
+        // noinspection JSUnusedGlobalSymbols
+        const output: Output
 
         interface Base {
             getTable(idOrName: string): Table,
         }
+        // noinspection JSUnusedGlobalSymbols
         const base: Base
-        const input: Input
 
         interface Table {
             id: string,
