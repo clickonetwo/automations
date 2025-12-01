@@ -22,6 +22,8 @@ declare module 'airtable_internal' {
         // noinspection JSUnusedGlobalSymbols
         const base: Base
 
+        function remoteFetchAsync(url: string, options: RequestInit): Promise<Response>
+
         interface Table {
             id: string,
             name: string,
@@ -47,6 +49,10 @@ declare module 'airtable_internal' {
                 recordOrRecordId: Record | string,
                 fields: {[fieldNameOrId: string]: unknown}
             ): Promise<void>
+            updateRecordsAsync(records: Array<{
+                id: string,
+                fields: {[fieldNameOrId: string]: unknown},
+            }>): Promise<void>
         }
 
         interface Field {
