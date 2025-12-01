@@ -1,4 +1,4 @@
-// noinspection JSUnresolvedReference
+// noinspection SpellCheckingInspection
 
 /*
  * Copyright 2024-2025 Daniel C. Brotsky. All rights reserved.
