@@ -77,6 +77,12 @@ declare module 'airtable/scripts/development/payloads' {
             utm_parameters: any[],
         }
 
+        interface GbListDonationsPayload {
+            data: GbDonationData[],
+            links: GbListLinks,
+            meta: GbListMeta,
+        }
+
         interface GbPlanData {
             id: string,
             contact_id: number,

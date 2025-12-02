@@ -44,7 +44,12 @@ declare module 'airtable_internal' {
                 fields?: Array<Field | string>,
                 recordIds?: Array<string>,
             }): Promise<RecordQueryResult>
-            createRecordAsync(fields: {[fieldNameOrId: string]: unknown}): Promise<string>
+            createRecordAsync(
+                fields: {[fieldNameOrId: string]: unknown}
+            ): Promise<string>
+            createRecordsAsync(
+                records: Array<{fields: {[fieldNameOrId: string]: unknown}}>
+            ): Promise<Array<string>>
             updateRecordAsync(
                 recordOrRecordId: Record | string,
                 fields: {[fieldNameOrId: string]: unknown}
