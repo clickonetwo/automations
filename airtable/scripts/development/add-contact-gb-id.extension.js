@@ -6,38 +6,60 @@
  * open source MIT License, reproduced in the LICENSE file.
  */
 
-const contactsTable = base.getTable('tblrsTMxY82X7DyZG')
+import {base, remoteFetchAsync} from "airtable_internal";
+
+const contactsTable = base.getTable('tblrsTMxY82X7DyZG')    // Contacts
+const donorsTable = base.getTable('tbl7kftZWTbseOHis')      // GB Contacts
 
 const contactsGbIdFieldId = 'fldqqPq1b9b7VOVey'     // GiveButter ID
 const contactsEmail1FieldId = 'fldjGQciq7ccIRfsm'   // Email 1
 const contactsEmail2FieldId = 'fldGHRReWTPk49t1Y'   // Email 2
+
+const donorsEmailFieldId = 'fldNeK7kFqJLj2cWj'
+const donorsNewContactFieldId = 'fld7boBE7WgjzOAhD'
 
 await doit()
 
 async function doit() {
     const gbContacts = await fetchGbContacts()
     console.log(`Fetched ${gbContacts.length} contacts with emails from GiveButter`)
+    const gbDonors = await fetchGbDonors()
+    console.log(`Fetched ${gbDonors.length} donors with emails from GiveButter`)
     const contacts = await fetchAirtableContacts()
     console.log(`Fetched ${contacts.length} contacts with emails from Airtable`)
-    const updates = []
-    let matches = 0
-    for (const contact of contacts) {
-        for (const gbContact of gbContacts) {
+    const contactUpdates = []
+    const donorUpdates = []
+    const unmatched = []
+    gbloop: for (const gbContact of gbContacts) {
+        for (const contact of contacts) {
             if (gbContact.email === contact.email1 || gbContact.email === contact.email2) {
-                matches++
-                updates.push({id: contact.id, fields: {[contactsGbIdFieldId]: gbContact.id}})
-                break
+                contactUpdates.push({id: contact.id, fields: {[contactsGbIdFieldId]: gbContact.id}})
+                continue gbloop
             }
         }
-        if (matches+1 % 100 === 0) console.log(
-            `Matched ${matches} contact emails with contact emails from GiveButter`
-        )
+        for (const gbDonor of gbDonors) {
+            if (gbContact.email === gbDonor.email) {
+                donorUpdates.push({id: gbDonor.id, fields: {[donorsNewContactFieldId]: true}})
+                continue gbloop
+            }
+        }
+        // unmatched email
+        unmatched.push(gbContact)
     }
-    console.log(`Found ${updates.length} contacts to update`)
-    for (let i = 0; i < updates.length; i += 50) {
-        const end = Math.min(updates.length, i + 50)
-        await contactsTable.updateRecordsAsync(updates.slice(i, end))
+    console.log(`Found ${contactUpdates.length} contacts to update`)
+    for (let i = 0; i < contactUpdates.length; i += 50) {
+        const end = Math.min(contactUpdates.length, i + 50)
+        await contactsTable.updateRecordsAsync(contactUpdates.slice(i, end))
     }
+    console.log(`Found ${donorUpdates.length} donors to update`)
+    for (let i = 0; i < donorUpdates.length; i += 50) {
+        const end = Math.min(donorUpdates.length, i + 50)
+        await donorsTable.updateRecordsAsync(donorUpdates.slice(i, end))
+    }
+    console.log(
+        `Found ${unmatched.length} unmatched emails of GiveButter contacts:`,
+        JSON.stringify(unmatched, null, 2)
+    )
 }
 
 
@@ -65,7 +87,12 @@ async function fetchGbContacts() {
         gbApiEndpoint = body.links.next
         for (const contact of body.data) {
             if (contact.primary_email) {
-                contacts.push({id: contact.id.toString(), email: contact.primary_email.toLowerCase()})
+                contacts.push({
+                    id: contact.id.toString(),
+                    email: contact.primary_email.toLowerCase(),
+                    firstName: contact.first_name,
+                    lastName: contact.last_name,
+                })
                 total++
                 if (total % 100 === 0) {
                     console.log(`As of page ${page}, found ${total} contacts with emails`)
@@ -75,6 +102,15 @@ async function fetchGbContacts() {
     }
     console.log(`After ${page} pages, found ${total} contacts with emails`)
     return contacts
+}
+
+async function fetchGbDonors() {
+    const result = await donorsTable.selectRecordsAsync({
+        fields: [donorsEmailFieldId]
+    })
+    return result.records.map(
+        r => ({id: r.id, email: r.getCellValueAsString(donorsEmailFieldId).toLowerCase()})
+    ).filter(r => r.email)
 }
 
 async function fetchAirtableContacts() {
