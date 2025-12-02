@@ -6,6 +6,8 @@
  * open source MIT License, reproduced in the LICENSE file.
  */
 
+import {base, input} from "airtable_internal";
+
 const donationsTable = base.getTable('tblAjtXdKANH06DIn')
 const contactsTable = base.getTable('tbl7kftZWTbseOHis')
 const plansTable = base.getTable('tblqgeY56ThyqHjIM')
