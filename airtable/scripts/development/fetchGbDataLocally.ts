@@ -1,6 +1,6 @@
 import { GbTransactionData, GbListDonationsPayload } from "./payloads";
 
-export async function fetchAllGbDonations() {
+export async function fetchAllGbTransactions() {
     const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
     let gbApiEndpoint = `https://api.givebutter.com/v1/transactions`;
     let page = 1;

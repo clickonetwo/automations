@@ -1,12 +1,12 @@
 import fs from "fs";
-import { fetchAllGbDonations } from "./fetchGbDataLocally";
+import { fetchAllGbTransactions } from "./fetchGbDataLocally";
 import { GbTransactionData } from "./payloads";
 
 async function fetchGbDonations() {
     let path = "../../local/donations.json";
     if (!fs.existsSync(path)) {
         console.log("No local donations.json file found, fetching from GB API...");
-        const donations = await fetchAllGbDonations();
+        const donations = await fetchAllGbTransactions();
         let content = JSON.stringify(donations, null, 2);
         fs.writeFileSync("../../local/donations.json", content);
         console.log(`Wrote ${donations.length} donations to local donations.json file.`);
