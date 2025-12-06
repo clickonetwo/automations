@@ -382,6 +382,7 @@ async function maybeSubscribeDonorToNewsletter(data) {
     let fields = data.custom_fields;
     for (const field of fields) {
         if (field.title.includes("subscribe to the") && field.value) {
+            console.log(`Subscribing donor ${data.email} to the Oasis newsletter`);
             const apiKey = "cugXQDNfMdsfjmjAgngxumqWs";
             const endpoint = "https://hook.us1.make.com/jl1mc3yl1qck7quodpelpy8vi32uh4iz";
             const response = await fetch(endpoint, {
@@ -392,8 +393,8 @@ async function maybeSubscribeDonorToNewsletter(data) {
                 },
                 body: JSON.stringify({
                     email: data.email,
-                    first_name: data.first_name,
-                    last_name: data.last_name,
+                    firstName: data.first_name,
+                    lastName: data.last_name,
                 }),
             });
             if (!response.ok) {
