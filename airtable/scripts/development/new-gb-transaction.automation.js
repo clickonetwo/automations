@@ -180,8 +180,15 @@ async function createOrUpdateCampaign(campaignId) {
         [campaignsNameFieldId]: data.title,
         [campaignsStartDateFieldId]: data.created_at.slice(0, 10),
     });
-    console.warn(`Alerting development personnel of new campaign ${campaignId}`);
-    // TODO: send an email to the development team
+    await notifyNew(
+        "campaign",
+        ["leanne.brotsky@oasislegalservices.org", "daniel.brotsky@oasislegalservices.org"],
+        [
+            `Campaign title: ${data.title}`,
+            `Campaign ID: ${campaignId}`,
+            `Campaign code: ${data.code ?? "(none)"}`,
+        ]
+    );
     return id;
 }
 
@@ -258,10 +265,20 @@ async function createOrUpdateDonor(data, donationRecordId) {
         [contactsStateFieldId]: data.address.state,
         [contactsZipFieldId]: data.address.zipcode,
         [contactsCountryFieldId]: data.address.country,
-        [contactsPhoneFieldId]: formatPhone(data.phone),
+        [contactsPhoneFieldId]: data.phone ? formatPhone(data.phone) : "",
         [contactsDonationsFieldId]: [{ id: donationRecordId }],
     };
-    return await contactsTable.createRecordAsync(newFields);
+    let id = await contactsTable.createRecordAsync(newFields);
+    await notifyNew(
+        "contact",
+        ["leanne.brotsky@oasislegalservices.org", "daniel.brotsky@oasislegalservices.org"],
+        [
+            `Contact Name: ${data.first_name} ${data.last_name}`,
+            `Contact Email: ${data.email}`,
+            `Contact ID: ${donorId}`,
+        ]
+    );
+    return id;
 }
 
 /**
@@ -309,6 +326,51 @@ async function createOrUpdatePlan(data, donationRecordId) {
         fieldValues[gbPlansEndedFieldId] = payload.canceled_at.slice(0, 10);
     }
     return await gbPlansTable.createRecordAsync(fieldValues);
+}
+
+/**
+ * Sends an email to the given recipients notifying them of the new record type.
+ * @param {string} recordType
+ * @param {string[]} recipients
+ * @param {string[]} details
+ * @returns {Promise<void>}
+ */
+async function notifyNew(recordType, recipients, details) {
+    if (!recordType || !recipients.length || !details.length) {
+        throw new Error(`Invalid parameters for ${recordType} notification`);
+    }
+    const subject = `GiveButter donation created a new ${recordType}`;
+    let body = `<p>A new ${recordType} was created while processing a GiveButter donation.</p>\n`;
+    body += `<p>The details are:</p>\n`;
+    body += `<ul>\n${details.map((d) => `  <li>${d}</li>`).join("\n")}</ul>\n`;
+    await sendEmail(recipients, subject, body);
+}
+
+/**
+ * Sends an email to the given recipients with the given subject and body.
+ * @param {string[]} recipients
+ * @param {string} subject
+ * @param {string} body
+ * @returns {Promise<void>}
+ */
+async function sendEmail(recipients, subject, body) {
+    const apiKey = "cugXQDNfMdsfjmjAgngxumqWs";
+    const endpoint = "https://hook.us1.make.com/opm6qmm3m5kgdborpy7dmva96ftne1dg";
+    const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-Make-Apikey": apiKey,
+        },
+        body: JSON.stringify({
+            to: recipients,
+            subject: subject,
+            body: body,
+        }),
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to send email: ${response.status} ${response.statusText}`);
+    }
 }
 
 /**
