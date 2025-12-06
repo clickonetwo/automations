@@ -74,7 +74,7 @@ export interface GbTransactionData {
     utm_parameters: any[];
 }
 
-export interface GbListDonationsPayload {
+export interface GbListTransactionsPayload {
     data: GbTransactionData[];
     links: GbListLinks;
     meta: GbListMeta;
@@ -104,6 +104,12 @@ export interface GbCampaignData {
     updated_at: string; // ISO DateTime
 }
 
+export interface GbListCampaignsPayload {
+    data: GbCampaignData[];
+    links: GbListLinks;
+    meta: GbListMeta;
+}
+
 export interface GbPlanData {
     id: string;
     contact_id: number;
@@ -120,6 +126,12 @@ export interface GbPlanData {
     start_at: string; // UTC 2025-06-21 01:24:19,
     canceled_at: string | null;
     next_bill_date: string; // UTC 2025-12-21 00:00:00
+}
+
+export interface GbListPlansPayload {
+    data: GbPlanData[];
+    links: GbListLinks;
+    meta: GbListMeta;
 }
 
 export interface GbContactEmail {
