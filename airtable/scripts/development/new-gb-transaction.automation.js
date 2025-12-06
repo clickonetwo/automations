@@ -6,7 +6,7 @@
  * open source MIT License, reproduced in the LICENSE file.
  */
 
-import { base, input, Record } from "../library/airtable.internal";
+import { base, input } from "../library/airtable.internal";
 import { GbTransactionPayload } from "./payloads";
 
 const gbTransactionsTable = base.getTable("tblAjtXdKANH06DIn"); // GB Transactions
@@ -19,12 +19,11 @@ const gbTransactionsPayloadFieldId = "fldxlf48Q1rsQ41XM"; // Payload
 const gbTransactionsIdFieldId = "fldMw3mEFuRy5dAG4"; // Transaction ID
 
 const gbPlansGbIdFieldId = "fld345XhcHaQV5Oaj"; // GiveButter ID
-const gbPlansDonorsFieldId = "fld4fzS8m4hQjBvT0"; // Donors
-const gbPlansDonationsFieldId = "fldhdn7ccLa51a0bl"; // Donations
 const gbPlansStatusFieldId = "fld70U96Fh0erAd27";
 const gbPlansFrequencyFieldId = "fldPF06oq9X6h1MMn";
 const gbPlansStartedFieldId = "fldxDW7rQGrV9iQGd";
 const gbPlansEndedFieldId = "fldZk7rhKQxmBIxin";
+const gbPlansDonationsFieldId = "fldXV9rVvyhMjXK4M"; // Donations
 
 const donationsGbIdFieldId = "fldHvNcrKLuNvszQV"; // GiveButter ID
 const donationsTypeFieldId = "fldUYFpeaQKOvtKcn"; // Donation Type (`Donation`)
@@ -33,7 +32,7 @@ const donationsCampaignsFieldId = "fldhYecexSdiuFN8O"; // Campaigns
 const donationsDateFieldId = "fld6ILU3ZDzbAHjRb"; // Paid Donation Date
 const donationsStatusFieldId = "fldvq258bMN1EnZrS"; // Donation Status (`Paid`)
 const donationsSourceFieldId = "fldMlp1KAU2O5aDzX"; // Donation Source (`GiveButter - EFT`)
-const donationsTransactionFieldId = "fld6ILU3ZDzbAHjRb"; // GiveButter Transaction
+const donationsTransactionFieldId = "fldNjF3cO8eeJHven"; // GiveButter Transaction
 const donationsRecurringFieldId = "fldkHqyj8d8iJzmwd"; // Recurring?
 
 const contactsGbIdFieldId = "fldqqPq1b9b7VOVey"; // GiveButter ID
@@ -61,9 +60,10 @@ async function processNewTransaction(recordId) {
     let data = await validateAndLabelTransaction(recordId);
     let donationRecordId = await createOrUpdateDonation(data, recordId);
     if (data.plan_id) {
-        await createOrUpdatePlan(data.plan_id, donationRecordId);
+        await createOrUpdatePlan(data, donationRecordId);
     }
     await createOrUpdateDonor(data, donationRecordId);
+    await maybeSubscribeDonorToNewsletter(data);
 }
 
 /**
@@ -136,17 +136,17 @@ async function createOrUpdateDonation(data, transactionRecordId) {
         recordId = await donationsTable.createRecordAsync({
             [donationsGbIdFieldId]: data.id,
             [donationsTransactionFieldId]: [{ id: transactionRecordId }],
-            [donationsTypeFieldId]: "Donation",
-            [donationsStatusFieldId]: "Paid",
-            [donationsSourceFieldId]: "GiveButter - EFT",
+            [donationsTypeFieldId]: { name: "Donation" },
+            [donationsStatusFieldId]: { name: "Paid" },
+            [donationsSourceFieldId]: { name: "GiveButter - EFT" },
         });
     }
     console.log(`Updating donation record ${recordId} with transaction data`);
     const campaignId = data.campaign_id.toString();
     const fieldUpdates = {
         [donationsAmountFieldId]: data.amount,
-        [donationsCampaignsFieldId]: [{ id: await createOrUpdateCampaign(campaign_id) }],
-        [donationsDateFieldId]: data.created_at.slice(0, 10),
+        [donationsCampaignsFieldId]: [{ id: await createOrUpdateCampaign(campaignId) }],
+        [donationsDateFieldId]: data.created_at,
         [donationsRecurringFieldId]: data.plan_id !== null,
     };
     await donationsTable.updateRecordAsync(recordId, fieldUpdates);
@@ -266,11 +266,12 @@ async function createOrUpdateDonor(data, donationRecordId) {
 
 /**
  * Creates (or updates) the plan record for a transaction and returns its record ID.
- * @param {string} planId
+ * @param {GbTransactionData} data
  * @param {string} donationRecordId
  * @returns {Promise<string>} The record ID of the created or updated plan
  */
-async function createOrUpdatePlan(planId, donationRecordId) {
+async function createOrUpdatePlan(data, donationRecordId) {
+    const planId = data.plan_id.toString();
     const existing = await gbPlansTable.selectRecordsAsync({
         fields: [gbPlansGbIdFieldId, gbPlansDonationsFieldId],
     });
@@ -299,7 +300,6 @@ async function createOrUpdatePlan(planId, donationRecordId) {
     const payload = await fetchPlan(planId);
     const fieldValues = {
         [gbPlansGbIdFieldId]: planId,
-        [gbPlansDonorsFieldId]: [{ id: donationRecordId }],
         [gbPlansDonationsFieldId]: [{ id: donationRecordId }],
         [gbPlansStatusFieldId]: payload.status,
         [gbPlansFrequencyFieldId]: payload.frequency,
@@ -309,6 +309,38 @@ async function createOrUpdatePlan(planId, donationRecordId) {
         fieldValues[gbPlansEndedFieldId] = payload.canceled_at.slice(0, 10);
     }
     return await gbPlansTable.createRecordAsync(fieldValues);
+}
+
+/**
+ * If the donor has opted in to newsletter subscriptions, subscribes them to the newsletter.
+ * @param {GbTransactionData} data
+ * @returns {Promise<void>}
+ */
+async function maybeSubscribeDonorToNewsletter(data) {
+    let fields = data.custom_fields;
+    for (const field of fields) {
+        if (field.title.includes("subscribe to the") && field.value) {
+            const apiKey = "cugXQDNfMdsfjmjAgngxumqWs";
+            const endpoint = "https://hook.us1.make.com/jl1mc3yl1qck7quodpelpy8vi32uh4iz";
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Make-Apikey": apiKey,
+                },
+                body: JSON.stringify({
+                    email: data.email,
+                    first_name: data.first_name,
+                    last_name: data.last_name,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to subscribe donor ${data.email} to newsletter: ${response.status} ${response.statusText}`
+                );
+            }
+        }
+    }
 }
 
 /**

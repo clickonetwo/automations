@@ -1,5 +1,5 @@
 import fs from "fs";
-import { fetchAllGbPlans, fetchAllGbTransactions } from "./fetchGbDataLocally";
+import { fetchAllGbCampaigns, fetchAllGbPlans, fetchAllGbTransactions } from "./fetchGbDataLocally";
 import { GbTransactionData } from "./payloads";
 
 async function fetchGbDonations() {
@@ -28,6 +28,20 @@ async function fetchGbPlans() {
     }
     let plans: GbTransactionData[] = JSON.parse(fs.readFileSync(path, "utf8"));
     return plans;
+}
+
+async function fetchGbCampaigns() {
+    let path = "../../local/campaigns.json";
+    if (!fs.existsSync(path)) {
+        console.log("No local campaigns.json file found, fetching from GB API...");
+        const campaigns = await fetchAllGbCampaigns();
+        let content = JSON.stringify(campaigns, null, 2);
+        fs.writeFileSync(path, content);
+        console.log(`Wrote ${campaigns.length} campaigns to local campaigns.json file.`);
+        return campaigns;
+    }
+    let campaigns: GbTransactionData[] = JSON.parse(fs.readFileSync(path, "utf8"));
+    return campaigns;
 }
 
 // async function findDonationsWithMismatchedAmounts() {
@@ -68,8 +82,8 @@ async function fetchGbPlans() {
 // }
 
 function main() {
-    fetchGbPlans().then((plans) => {
-        console.log(`Fetched ${plans.length} plans.`);
+    fetchGbCampaigns().then((plans) => {
+        console.log(`Fetched ${plans.length} campaigns.`);
     });
 }
 
