@@ -17,6 +17,8 @@ const campaignsTable = base.getTable("tbltHW0T3EbgPX3Ff"); // Campaigns
 
 const gbTransactionsPayloadFieldId = "fldxlf48Q1rsQ41XM"; // Payload
 const gbTransactionsIdFieldId = "fldMw3mEFuRy5dAG4"; // Transaction ID
+const gbTransactionsDateFieldId = "fldZAe03AUdQm7XJu"; // Transaction Date
+const gbTransactionsProcessingDateFieldId = "flds7eU4WrCSz6xeo"; // Processing Date
 
 const gbPlansGbIdFieldId = "fld345XhcHaQV5Oaj"; // GiveButter ID
 const gbPlansStatusFieldId = "fld70U96Fh0erAd27";
@@ -104,10 +106,12 @@ async function validateAndLabelTransaction(recordId) {
         }
     } else {
         console.log(`Transaction record ${transactionRecordId} is valid and being processed`);
-        await gbTransactionsTable.updateRecordAsync(transactionRecordId, {
-            [gbTransactionsIdFieldId]: id,
-        });
     }
+    await gbTransactionsTable.updateRecordAsync(transactionRecordId, {
+        [gbTransactionsIdFieldId]: id,
+        [gbTransactionsDateFieldId]: data.created_at,
+        [gbTransactionsProcessingDateFieldId]: new Date().toISOString(),
+    });
     return data;
 }
 
