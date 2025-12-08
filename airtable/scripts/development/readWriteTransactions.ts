@@ -2,6 +2,7 @@
 
 import fs from "fs";
 import { parse } from "csv-parse/sync";
+import { GbTransactionPayload } from "./payloads";
 
 export function convertCsvToJson() {
     const path = "../../local/development-transactions.";
@@ -21,10 +22,10 @@ export function convertCsvToJson() {
 export function loadPayloads() {
     const path = "../../local/development-transactions.";
     const content = fs.readFileSync(path + "json", "utf8");
-    return JSON.parse(content) as unknown[];
+    return JSON.parse(content) as GbTransactionPayload[];
 }
 
-export async function pushJsonToMake(payload: unknown) {
+export async function pushJsonToMake(payload: GbTransactionPayload) {
     // noinspection SpellCheckingInspection
     const signature =
         "IHCO60sgh7TJwpky3eojtQhy77VsA2zvznSDbhCH2vbwabU7bULi8hBJtM5aVqQVS6Xehs5T0QzgcPt5fqFDcyWCqCS9NkfJ1NIr";

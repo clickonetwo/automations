@@ -1,6 +1,7 @@
 // noinspection JSUnusedGlobalSymbols
 
 import { fetchGbTransactions } from "./fetchGbData";
+import { GbTransactionPayload } from "./payloads";
 
 export async function findTransactionsWithMismatchedAmounts() {
     const transactions = await fetchGbTransactions();
@@ -37,4 +38,21 @@ export async function findGbCustomFieldTitles() {
         }
     }
     return titles;
+}
+
+export function ListGbCampaigns(ts: GbTransactionPayload[]) {
+    const campaigns = ts.map((t) => t.data.campaign_id.toString() ?? "none");
+    return [...new Set(campaigns)];
+}
+
+export function ListDonationsBetweenDates(
+    ts: GbTransactionPayload[],
+    startDate: Date,
+    endDate: Date
+) {
+    ts = ts.filter((t) => {
+        const d = new Date(t.data.created_at);
+        return d >= startDate && d < endDate;
+    });
+    return ts.map((t) => t.data.id);
 }
