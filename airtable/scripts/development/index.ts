@@ -1,10 +1,7 @@
-import { mergeTransactions } from "./compareTransactions";
+import { pushPayloads } from "./readWriteTransactions";
 
 function main() {
-    mergeTransactions().then(({ atu, gbu }) => {
-        console.log(`Unmatched from Airtable:\n${JSON.stringify(atu, null, 2)}`);
-        console.log(`Unmatched from Givebutter:\n${JSON.stringify(gbu, null, 2)}`);
-    });
+    pushPayloads(5).then(() => console.log("Done."));
 }
 
 main();
