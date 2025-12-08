@@ -36,6 +36,8 @@ const donationsStatusFieldId = "fldvq258bMN1EnZrS"; // Donation Status (`Paid`)
 const donationsSourceFieldId = "fldMlp1KAU2O5aDzX"; // Donation Source (`GiveButter - EFT`)
 const donationsTransactionFieldId = "fldNjF3cO8eeJHven"; // GiveButter Transaction
 const donationsRecurringFieldId = "fldkHqyj8d8iJzmwd"; // Recurring?
+const donationsPartnerFieldId = "fldeTTEn5cAOCKMi9"; // Donating with Partner?
+const donationsReasonFieldId = "fldPtBZXyRwrVFgsr"; // Donation Reason
 
 const contactsGbIdFieldId = "fldqqPq1b9b7VOVey"; // GiveButter ID
 const contactsFirstNameFieldId = "fldlQ6XJ3xd1tQU1x"; // First Name
@@ -152,6 +154,8 @@ async function createOrUpdateDonation(data, transactionRecordId) {
         [donationsCampaignsFieldId]: [{ id: await createOrUpdateCampaign(campaignId) }],
         [donationsDateFieldId]: data.created_at,
         [donationsRecurringFieldId]: data.plan_id !== null,
+        [donationsPartnerFieldId]: getCustomField(data, "partner") ?? "",
+        [donationsReasonFieldId]: getCustomField(data, "inspired") ?? "",
     };
     await donationsTable.updateRecordAsync(recordId, fieldUpdates);
     return recordId;
@@ -333,6 +337,17 @@ async function createOrUpdatePlan(data, donationRecordId) {
 }
 
 /**
+ * Get value of a custom field from a donation, if any
+ * @param {GbTransactionData} data
+ * @param {string} titleKeyword
+ * @returns {string | boolean | undefined}
+ */
+function getCustomField(data, titleKeyword) {
+    return data.custom_fields.find((field) => field.title.toLowerCase().includes(titleKeyword))
+        ?.value;
+}
+
+/**
  * Sends an email to the given recipients notifying them of the new record type.
  * @param {string} recordType
  * @param {string[]} recipients
@@ -383,29 +398,26 @@ async function sendEmail(recipients, subject, body) {
  * @returns {Promise<void>}
  */
 async function maybeSubscribeDonorToNewsletter(data) {
-    let fields = data.custom_fields;
-    for (const field of fields) {
-        if (field.title.includes("subscribe to the") && field.value) {
-            console.log(`Subscribing donor ${data.email} to the Oasis newsletter`);
-            const apiKey = "cugXQDNfMdsfjmjAgngxumqWs";
-            const endpoint = "https://hook.us1.make.com/jl1mc3yl1qck7quodpelpy8vi32uh4iz";
-            const response = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Make-Apikey": apiKey,
-                },
-                body: JSON.stringify({
-                    email: data.email,
-                    firstName: data.first_name,
-                    lastName: data.last_name,
-                }),
-            });
-            if (!response.ok) {
-                throw new Error(
-                    `Failed to subscribe donor ${data.email} to newsletter: ${response.status} ${response.statusText}`
-                );
-            }
+    if (getCustomField(data, "subscribe")) {
+        console.log(`Subscribing donor ${data.email} to the Oasis newsletter`);
+        const apiKey = "cugXQDNfMdsfjmjAgngxumqWs";
+        const endpoint = "https://hook.us1.make.com/jl1mc3yl1qck7quodpelpy8vi32uh4iz";
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Make-Apikey": apiKey,
+            },
+            body: JSON.stringify({
+                email: data.email,
+                firstName: data.first_name,
+                lastName: data.last_name,
+            }),
+        });
+        if (!response.ok) {
+            throw new Error(
+                `Failed to subscribe donor ${data.email} to newsletter: ${response.status} ${response.statusText}`
+            );
         }
     }
 }

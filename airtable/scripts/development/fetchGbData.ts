@@ -1,3 +1,5 @@
+// noinspection JSUnusedGlobalSymbols
+
 import {
     GbTransactionData,
     GbListTransactionsPayload,
@@ -6,13 +8,15 @@ import {
     GbCampaignData,
     GbListCampaignsPayload,
 } from "./payloads";
+import fs from "fs";
 
-export async function fetchAllGbTransactions() {
+async function fetchAllGbTransactions() {
+    // noinspection SpellCheckingInspection
     const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
     let gbApiEndpoint = `https://api.givebutter.com/v1/transactions`;
     let page = 1;
     let more = true;
-    const donations: GbTransactionData[] = [];
+    const transactions: GbTransactionData[] = [];
     while (more) {
         const response = await fetch(gbApiEndpoint + `?page=${page}`, {
             method: "GET",
@@ -31,14 +35,31 @@ export async function fetchAllGbTransactions() {
         const last_page = body.meta.last_page ?? 0;
         more = last_page > page;
         for (const payload of body.data) {
-            donations.push(payload);
+            transactions.push(payload);
         }
-        console.log(`After page ${page} of ${last_page}, found ${donations.length} donations`);
+        console.log(
+            `After page ${page} of ${last_page}, found ${transactions.length} transactions`
+        );
     }
+    return transactions;
+}
+
+export async function fetchGbTransactions() {
+    let path = "../../local/donations.json";
+    if (!fs.existsSync(path)) {
+        console.log("No local donations.json file found, fetching from GB API...");
+        const donations = await fetchAllGbTransactions();
+        let content = JSON.stringify(donations, null, 2);
+        fs.writeFileSync(path, content);
+        console.log(`Wrote ${donations.length} donations to local donations.json file.`);
+        return donations;
+    }
+    let donations: GbTransactionData[] = JSON.parse(fs.readFileSync(path, "utf8"));
     return donations;
 }
 
-export async function fetchAllGbPlans() {
+async function fetchAllGbPlans() {
+    // noinspection SpellCheckingInspection
     const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
     let gbApiEndpoint = `https://api.givebutter.com/v1/plans`;
     let page = 1;
@@ -68,7 +89,23 @@ export async function fetchAllGbPlans() {
     }
     return plans;
 }
-export async function fetchAllGbCampaigns() {
+
+export async function fetchGbPlans() {
+    let path = "../../local/plans.json";
+    if (!fs.existsSync(path)) {
+        console.log("No local plans.json file found, fetching from GB API...");
+        const plans = await fetchAllGbPlans();
+        let content = JSON.stringify(plans, null, 2);
+        fs.writeFileSync(path, content);
+        console.log(`Wrote ${plans.length} plans to local plans.json file.`);
+        return plans;
+    }
+    let plans: GbPlanData[] = JSON.parse(fs.readFileSync(path, "utf8"));
+    return plans;
+}
+
+async function fetchAllGbCampaigns() {
+    // noinspection SpellCheckingInspection
     const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
     let gbApiEndpoint = `https://api.givebutter.com/v1/campaigns`;
     let page = 1;
@@ -96,5 +133,19 @@ export async function fetchAllGbCampaigns() {
         }
         console.log(`After page ${page} of ${last_page}, found ${campaigns.length} campaigns`);
     }
+    return campaigns;
+}
+
+export async function fetchGbCampaigns() {
+    let path = "../../local/campaigns.json";
+    if (!fs.existsSync(path)) {
+        console.log("No local campaigns.json file found, fetching from GB API...");
+        const campaigns = await fetchAllGbCampaigns();
+        let content = JSON.stringify(campaigns, null, 2);
+        fs.writeFileSync(path, content);
+        console.log(`Wrote ${campaigns.length} campaigns to local campaigns.json file.`);
+        return campaigns;
+    }
+    let campaigns: GbCampaignData[] = JSON.parse(fs.readFileSync(path, "utf8"));
     return campaigns;
 }
