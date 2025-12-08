@@ -1,15 +1,7 @@
-import { loadPayloads } from "./readWriteTransactions";
-import { ListDonationsBetweenDates } from "./analyzeGbData";
+import { pushPayloads } from "./readWriteTransactions";
 
 function main() {
-    const payloads = loadPayloads();
-    const ids = ListDonationsBetweenDates(
-        payloads,
-        new Date("2025-11-24T00:00:00.000Z"),
-        new Date("2025-11-25T00:00:00.000Z")
-    );
-    console.log(`There are ${ids.length} payloads:`);
-    console.log(ids);
+    pushPayloads(5).then(() => console.log("Done."));
 }
 
 main();

@@ -9,37 +9,37 @@
 import { base, input } from "../library/airtable.internal";
 import { GbTransactionPayload } from "./payloads";
 
-const gbTransactionsTable = base.getTable("tblAjtXdKANH06DIn"); // GB Transactions
-const gbPlansTable = base.getTable("tblqgeY56ThyqHjIM"); // GB Plans
+const gbTransactionsTable = base.getTable("tbl8jNRLGqlNeWUGE"); // Givebutter Transactions
+const gbPlansTable = base.getTable("tblZZUl3hVfDV8bTl"); // Givebutter Plans (Recurring Donations)
 const contactsTable = base.getTable("tblrsTMxY82X7DyZG"); // Contacts
 const donationsTable = base.getTable("tblUoq0LQPx0WEGHf"); // Donations
 const campaignsTable = base.getTable("tbltHW0T3EbgPX3Ff"); // Campaigns
 
-const gbTransactionsPayloadFieldId = "fldxlf48Q1rsQ41XM"; // Payload
-const gbTransactionsIdFieldId = "fldMw3mEFuRy5dAG4"; // Transaction ID
-const gbTransactionsDateFieldId = "fldZAe03AUdQm7XJu"; // Transaction Date
-const gbTransactionsProcessingDateFieldId = "flds7eU4WrCSz6xeo"; // Processing Date
+const gbTransactionsPayloadFieldId = "fldzVlqLYFULx4k5l"; // Payload
+const gbTransactionsIdFieldId = "fldGfrwDCShr3YEbq"; // Transaction ID
+const gbTransactionsDateFieldId = "fldT48GmMgQcZHYQT"; // Transaction Date
+const gbTransactionsProcessingDateFieldId = "fldpyShRwXAjqY9Rc"; // Processing Date
 
-const gbPlansGbIdFieldId = "fld345XhcHaQV5Oaj"; // GiveButter ID
-const gbPlansStatusFieldId = "fld70U96Fh0erAd27";
-const gbPlansFrequencyFieldId = "fldPF06oq9X6h1MMn";
-const gbPlansStartedFieldId = "fldxDW7rQGrV9iQGd";
-const gbPlansEndedFieldId = "fldZk7rhKQxmBIxin";
-const gbPlansDonationsFieldId = "fldXV9rVvyhMjXK4M"; // Donations
+const gbPlansGbIdFieldId = "fldZbssyRnyafiq1I"; // Givebutter Plan ID
+const gbPlansStatusFieldId = "fldxYa7JIpuTZfLSc"; // Status
+const gbPlansFrequencyFieldId = "fldfGSXjfGX53ByTQ"; // Frequency
+const gbPlansStartedFieldId = "fldIIKl0enht05Mf3"; // Started
+const gbPlansEndedFieldId = "fldOQbPvcn55GA27g"; // Ended
+const gbPlansDonationsFieldId = "fld7mTuvNkfDTz8c2"; // Donations
 
-const donationsGbIdFieldId = "fldHvNcrKLuNvszQV"; // GiveButter ID
+const donationsGbIdFieldId = "fld4H5OJsCWGKZk1j"; // Givebutter Donation ID
 const donationsTypeFieldId = "fldUYFpeaQKOvtKcn"; // Donation Type (`Donation`)
 const donationsAmountFieldId = "fldGJVoeZk9alsayT"; // Donation Amount
 const donationsCampaignsFieldId = "fldhYecexSdiuFN8O"; // Campaigns
 const donationsDateFieldId = "fld6ILU3ZDzbAHjRb"; // Paid Donation Date
 const donationsStatusFieldId = "fldvq258bMN1EnZrS"; // Donation Status (`Paid`)
 const donationsSourceFieldId = "fldMlp1KAU2O5aDzX"; // Donation Source (`GiveButter - EFT`)
-const donationsTransactionFieldId = "fldNjF3cO8eeJHven"; // GiveButter Transaction
-const donationsRecurringFieldId = "fldkHqyj8d8iJzmwd"; // Recurring?
-const donationsPartnerFieldId = "fldeTTEn5cAOCKMi9"; // Donating with Partner?
-const donationsReasonFieldId = "fldPtBZXyRwrVFgsr"; // Donation Reason
+const donationsTransactionFieldId = "fldm7NxMA5WDb9yYf"; // Givebutter Transaction
+const donationsRecurringFieldId = "fldL29IuEKJsyNqb5"; // Recurring?
+const donationsPartnerFieldId = "fld67OVm6nLq6upnA"; // Donating with Partner?
+const donationsReasonFieldId = "fldjcPRTSJofGf05s"; // Donation Reason
 
-const contactsGbIdFieldId = "fldqqPq1b9b7VOVey"; // GiveButter ID
+const contactsGbIdFieldId = "fldzP0Nk6GCoEEgHV"; // Givebutter Contact ID
 const contactsFirstNameFieldId = "fldlQ6XJ3xd1tQU1x"; // First Name
 const contactsLastNameFieldId = "fld7BcJ3eYGn0xCWO"; // Last Name
 const contactsEmail1FieldId = "fldjGQciq7ccIRfsm"; // Email1
@@ -48,13 +48,12 @@ const contactsAddressFieldId = "fldgcYg5x3zQOUggS"; // Street Address
 const contactsCityFieldId = "fldi2SAXzvfOOQy4W"; // City
 const contactsStateFieldId = "fldD0In6imjjhtiGL"; // State
 const contactsZipFieldId = "fld97L7HdcYpviw5P"; // Zip
-const contactsCountryFieldId = "fldtoXiM2ehKs68PS"; // Country
+const contactsCountryFieldId = "fldVK43YurQ8qJkoO"; // Country*
 const contactsPhoneFieldId = "fldHbJGJBn5hVpzeU"; // Phone # (formatted)
 const contactsDonationsFieldId = "fldZfXELOVTAGf5Mc"; // Donations Made
 
 const campaignsNameFieldId = "fld6wji2XyoNolXUt"; // Campaign Name
-const campaignsGbIdFieldId = "fldcP7RwCM6Ht9K2S"; // GiveButter ID
-const campaignsGbCodeFieldId = "fldnVTTDXBJKoiyI5"; // GiveButter Code
+const campaignsGbIdFieldId = "fldNgQSjHXyanGpQl"; // Givebutter Campaign ID
 const campaignsStartDateFieldId = "fldFjj6HzcfXekJx0"; // Start Date
 
 const { transactionRecordId } = input.config();
@@ -62,6 +61,10 @@ await processNewTransaction(transactionRecordId);
 
 async function processNewTransaction(recordId) {
     let data = await validateAndLabelTransaction(recordId);
+    if (!data) {
+        console.warn(`Transaction record ${recordId} is being skipped`);
+        return;
+    }
     let donationRecordId = await createOrUpdateDonation(data, recordId);
     if (data.plan_id) {
         await createOrUpdatePlan(data, donationRecordId);
@@ -73,7 +76,7 @@ async function processNewTransaction(recordId) {
 /**
  * Validates the transaction record and labels it (with the transaction ID) as processed.
  * @param {string} recordId
- * @returns {Promise<GbTransactionData>}
+ * @returns {Promise<GbTransactionData | undefined>}
  */
 async function validateAndLabelTransaction(recordId) {
     const transactionRecord = await gbTransactionsTable.selectRecordAsync(recordId);
@@ -94,7 +97,7 @@ async function validateAndLabelTransaction(recordId) {
         fields: [gbTransactionsIdFieldId],
     });
     const matchingRecords = existing.records.filter(
-        (r) => r.getCellValue(gbTransactionsIdFieldId) === id
+        (r) => r.getCellValueAsString(gbTransactionsIdFieldId) === id
     );
     if (matchingRecords.length) {
         if (matchingRecords.length > 1) {
@@ -114,6 +117,10 @@ async function validateAndLabelTransaction(recordId) {
         [gbTransactionsDateFieldId]: data.created_at,
         [gbTransactionsProcessingDateFieldId]: new Date().toISOString(),
     });
+    if (data.payout === 0) {
+        console.log(`Skipping transaction ${id} because it has 0 payout`);
+        return undefined;
+    }
     return data;
 }
 
@@ -129,7 +136,7 @@ async function createOrUpdateDonation(data, transactionRecordId) {
         fields: [donationsGbIdFieldId],
     });
     const matchingRecords = existing.records.filter(
-        (r) => r.getCellValue(donationsGbIdFieldId) === data.id
+        (r) => r.getCellValueAsString(donationsGbIdFieldId) === data.id
     );
     if (matchingRecords.length) {
         if (matchingRecords.length > 1) {
@@ -171,7 +178,7 @@ async function createOrUpdateCampaign(campaignId) {
         fields: [campaignsGbIdFieldId],
     });
     const matchingRecords = existing.records.filter(
-        (r) => r.getCellValue(campaignsGbIdFieldId) === campaignId
+        (r) => r.getCellValueAsString(campaignsGbIdFieldId) === campaignId
     );
     if (matchingRecords.length) {
         if (matchingRecords.length > 1) {
@@ -184,13 +191,12 @@ async function createOrUpdateCampaign(campaignId) {
     let data = await fetchCampaign(campaignId);
     let id = await campaignsTable.createRecordAsync({
         [campaignsGbIdFieldId]: campaignId,
-        [campaignsGbCodeFieldId]: data.code ?? "",
         [campaignsNameFieldId]: data.title,
         [campaignsStartDateFieldId]: data.created_at.slice(0, 10),
     });
     await notifyNew(
         "campaign",
-        ["leanne.brotsky@oasislegalservices.org", "daniel.brotsky@oasislegalservices.org"],
+        ["donation.automation@oasislegalservices.org"],
         [
             `Campaign title: ${data.title}`,
             `Campaign ID: ${campaignId}`,
@@ -218,16 +224,16 @@ async function createOrUpdateDonor(data, donationRecordId) {
     });
     // check for matching contacts by GiveButter ID, email1, or email2
     let matchingRecords = existing.records.filter(
-        (r) => r.getCellValue(contactsGbIdFieldId) === donorId
+        (r) => r.getCellValueAsString(contactsGbIdFieldId) === donorId
     );
     if (!matchingRecords.length) {
         matchingRecords = existing.records.filter(
-            (r) => r.getCellValue(contactsEmail1FieldId) === data.email
+            (r) => r.getCellValueAsString(contactsEmail1FieldId) === data.email
         );
     }
     if (!matchingRecords.length) {
         matchingRecords = existing.records.filter(
-            (r) => r.getCellValue(contactsEmail2FieldId) === data.email
+            (r) => r.getCellValueAsString(contactsEmail2FieldId) === data.email
         );
     }
     // if there is a matching contact, make sure this donation is linked
@@ -236,16 +242,18 @@ async function createOrUpdateDonor(data, donationRecordId) {
             throw new Error(`There is more than one donor with ID ${donorId}`);
         }
         const donorRecord = matchingRecords[0];
-        const existing = donorRecord.getCellValue(contactsDonationsFieldId);
-        if (existing && !existing.map((v) => v.id).includes(donationRecordId)) {
+        const existing = donorRecord.getCellValue(contactsDonationsFieldId) ?? [];
+        if (existing.map((v) => v.id).includes(donationRecordId)) {
+            console.log(`This donation is already linked to existing contact ID ${donorId}`);
+        } else {
             console.log(`This donation link is being added to existing contact ID ${donorId}`);
             const fieldUpdates = {
                 [contactsDonationsFieldId]: [...existing, { id: donationRecordId }],
             };
             // also make sure that the GB ID and emails for this contact are up to date
-            const gbId = donorRecord.getCellValue(contactsGbIdFieldId);
-            const email1 = donorRecord.getCellValue(contactsEmail1FieldId);
-            const email2 = donorRecord.getCellValue(contactsEmail2FieldId);
+            const gbId = donorRecord.getCellValueAsString(contactsGbIdFieldId);
+            const email1 = donorRecord.getCellValueAsString(contactsEmail1FieldId);
+            const email2 = donorRecord.getCellValueAsString(contactsEmail2FieldId);
             if (!gbId) {
                 fieldUpdates[contactsGbIdFieldId] = donorId;
             }
@@ -255,8 +263,6 @@ async function createOrUpdateDonor(data, donationRecordId) {
                 fieldUpdates[contactsEmail2FieldId] = data.email;
             }
             await contactsTable.updateRecordAsync(donorRecord.id, fieldUpdates);
-        } else {
-            console.log(`This donation is already linked to existing contact ID ${donorId}`);
         }
         return donorRecord.id;
     }
@@ -272,14 +278,14 @@ async function createOrUpdateDonor(data, donationRecordId) {
         [contactsCityFieldId]: data.address.city,
         [contactsStateFieldId]: data.address.state,
         [contactsZipFieldId]: data.address.zipcode,
-        [contactsCountryFieldId]: data.address.country,
+        [contactsCountryFieldId]: { name: data.address.country },
         [contactsPhoneFieldId]: data.phone ? formatPhone(data.phone) : "",
         [contactsDonationsFieldId]: [{ id: donationRecordId }],
     };
     let id = await contactsTable.createRecordAsync(newFields);
     await notifyNew(
         "contact",
-        ["leanne.brotsky@oasislegalservices.org", "daniel.brotsky@oasislegalservices.org"],
+        ["donation.automation@oasislegalservices.org"],
         [
             `Contact Name: ${data.first_name} ${data.last_name}`,
             `Contact Email: ${data.email}`,
@@ -301,7 +307,7 @@ async function createOrUpdatePlan(data, donationRecordId) {
         fields: [gbPlansGbIdFieldId, gbPlansDonationsFieldId],
     });
     const matchingRecords = existing.records.filter(
-        (r) => r.getCellValue(gbPlansGbIdFieldId) === planId
+        (r) => r.getCellValueAsString(gbPlansGbIdFieldId) === planId
     );
     // if there is a matching plan, make sure this donation is linked
     if (matchingRecords.length) {
@@ -309,14 +315,14 @@ async function createOrUpdatePlan(data, donationRecordId) {
             throw new Error(`There is more than one plan with ID ${planId}`);
         }
         const planRecord = matchingRecords[0];
-        const existing = planRecord.getCellValue(gbPlansDonationsFieldId);
-        if (existing && !existing.map((v) => v.id).includes(donationRecordId)) {
+        const existing = planRecord.getCellValue(gbPlansDonationsFieldId) ?? [];
+        if (existing.map((v) => v.id).includes(donationRecordId)) {
+            console.log(`Donation is already linked to existing plan ${planId}`);
+        } else {
             console.log(`Donation is being added to existing plan ${planId}`);
             await gbPlansTable.updateRecordAsync(planRecord.id, {
                 [gbPlansDonationsFieldId]: [...existing, { id: donationRecordId }],
             });
-        } else {
-            console.log(`Donation is already linked to existing plan ${planId}`);
         }
         return planRecord.id;
     }
