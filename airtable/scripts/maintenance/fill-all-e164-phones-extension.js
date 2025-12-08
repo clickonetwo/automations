@@ -1,3 +1,5 @@
+// noinspection SpellCheckingInspection
+
 /*
  * Copyright 2024-2025 Daniel C. Brotsky. All rights reserved.
  * All the copyrighted work in this repository is licensed under the
@@ -36,7 +38,7 @@ async function updateE164Phones(masterTable, records) {
     for (const record of records) {
         const e164 = anyPhoneIntoE164(record.phone)
         if (e164.indexOf("+0") >= 0) {
-            // couldn't format phone
+            // can't format this number
             continue
         }
         const update = {
@@ -73,7 +75,7 @@ function usPhoneIntoE164(phone) {
         return "+" + digits
     }
     // yuk - this is a pretty strange phone number
-    // just return a place-holder so we group all
+    // just return a placeholder so we group all
     // the duplicates together
     return "+01112223333"
 }
