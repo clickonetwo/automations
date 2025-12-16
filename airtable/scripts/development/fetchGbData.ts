@@ -12,7 +12,7 @@ import fs from "fs";
 
 async function fetchAllGbTransactions() {
     // noinspection SpellCheckingInspection
-    const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
+    const gbApiKey = process.env["GB_API_KEY"];
     let gbApiEndpoint = `https://api.givebutter.com/v1/transactions`;
     let page = 1;
     let more = true;
@@ -60,7 +60,7 @@ export async function fetchGbTransactions() {
 
 async function fetchAllGbPlans() {
     // noinspection SpellCheckingInspection
-    const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
+    const gbApiKey = process.env["GB_API_KEY"];
     let gbApiEndpoint = `https://api.givebutter.com/v1/plans`;
     let page = 1;
     let more = true;
@@ -106,7 +106,7 @@ export async function fetchGbPlans() {
 
 async function fetchAllGbCampaigns() {
     // noinspection SpellCheckingInspection
-    const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
+    const gbApiKey = process.env["GB_API_KEY"];
     let gbApiEndpoint = `https://api.givebutter.com/v1/campaigns`;
     let page = 1;
     let more = true;

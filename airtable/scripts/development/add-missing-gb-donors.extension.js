@@ -6,7 +6,9 @@
  * open source MIT License, reproduced in the LICENSE file.
  */
 
-import { base, remoteFetchAsync } from "airtable_internal";
+import { base, input, remoteFetchAsync } from "../library/airtable.internal";
+
+const gbApiKey = input.secret("gbApiKey");
 
 const contactsTable = base.getTable("tblrsTMxY82X7DyZG"); // Contacts
 const gbContactsTable = base.getTable("tbl7kftZWTbseOHis"); // GB Contacts
@@ -62,7 +64,6 @@ async function doit() {
 }
 
 async function fetchGbDonors() {
-    const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
     let gbApiEndpoint = `https://api.givebutter.com/v1/transactions`;
     let page = 1;
     let more = true;

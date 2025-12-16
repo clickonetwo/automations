@@ -3,6 +3,7 @@
 
 export interface Input {
     config(): { [key: string]: any };
+    secret(key: string): string;
 }
 // noinspection JSUnusedGlobalSymbols
 export const input: Input;

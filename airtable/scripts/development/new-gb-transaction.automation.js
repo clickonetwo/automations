@@ -57,6 +57,8 @@ const campaignsGbIdFieldId = "fldNgQSjHXyanGpQl"; // Givebutter Campaign ID
 const campaignsStartDateFieldId = "fldFjj6HzcfXekJx0"; // Start Date
 
 const { transactionRecordId } = input.config();
+const makeApiKey = input.secret("makeApiKey");
+const gbApiKey = input.secret("gbApiKey");
 await processNewTransaction(transactionRecordId);
 
 async function processNewTransaction(recordId) {
@@ -227,19 +229,22 @@ async function createOrUpdateDonor(data, donationRecordId) {
         (r) => r.getCellValueAsString(contactsGbIdFieldId) === donorId
     );
     if (!matchingRecords.length) {
+        let el = data.email.toLowerCase();
         matchingRecords = existing.records.filter(
-            (r) => r.getCellValueAsString(contactsEmail1FieldId) === data.email
+            (r) => r.getCellValueAsString(contactsEmail1FieldId).toLowerCase() === el
         );
-    }
-    if (!matchingRecords.length) {
-        matchingRecords = existing.records.filter(
-            (r) => r.getCellValueAsString(contactsEmail2FieldId) === data.email
+        matchingRecords.push(
+            ...existing.records.filter(
+                (r) => r.getCellValueAsString(contactsEmail2FieldId).toLowerCase() === el
+            )
         );
     }
     // if there is a matching contact, make sure this donation is linked
     if (matchingRecords.length) {
         if (matchingRecords.length > 1) {
-            throw new Error(`There is more than one donor with ID ${donorId}`);
+            throw new Error(
+                `There is more than one donor with ID ${donorId} or email ${data.email}`
+            );
         }
         const donorRecord = matchingRecords[0];
         const existing = donorRecord.getCellValue(contactsDonationsFieldId) ?? [];
@@ -379,13 +384,12 @@ async function notifyNew(recordType, recipients, details) {
  * @returns {Promise<void>}
  */
 async function sendEmail(recipients, subject, body) {
-    const apiKey = "cugXQDNfMdsfjmjAgngxumqWs";
     const endpoint = "https://hook.us1.make.com/opm6qmm3m5kgdborpy7dmva96ftne1dg";
     const response = await fetch(endpoint, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "X-Make-Apikey": apiKey,
+            "X-Make-Apikey": makeApiKey,
         },
         body: JSON.stringify({
             to: recipients,
@@ -406,13 +410,12 @@ async function sendEmail(recipients, subject, body) {
 async function maybeSubscribeDonorToNewsletter(data) {
     if (getCustomField(data, "subscribe")) {
         console.log(`Subscribing donor ${data.email} to the Oasis newsletter`);
-        const apiKey = "cugXQDNfMdsfjmjAgngxumqWs";
         const endpoint = "https://hook.us1.make.com/jl1mc3yl1qck7quodpelpy8vi32uh4iz";
         const response = await fetch(endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-Make-Apikey": apiKey,
+                "X-Make-Apikey": makeApiKey,
             },
             body: JSON.stringify({
                 email: data.email,
@@ -434,7 +437,6 @@ async function maybeSubscribeDonorToNewsletter(data) {
  * @returns {Promise<GbCampaignData>}
  */
 async function fetchCampaign(campaignId) {
-    const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
     const gbApiEndpoint = `https://api.givebutter.com/v1/campaigns/${campaignId}`;
     const response = await fetch(gbApiEndpoint, {
         method: "GET",
@@ -457,7 +459,6 @@ async function fetchCampaign(campaignId) {
  * @returns {Promise<GbPlanData>}
  */
 async function fetchPlan(planId) {
-    const gbApiKey = "8513|QykGq6xF69yvSDsWsJG4fGq6OsrvLRwrG4TvW5vs";
     const gbApiEndpoint = `https://api.givebutter.com/v1/plans/${planId}`;
     const response = await fetch(gbApiEndpoint, {
         method: "GET",
