@@ -57,8 +57,17 @@ const campaignsGbIdFieldId = "fldNgQSjHXyanGpQl"; // Givebutter Campaign ID
 const campaignsStartDateFieldId = "fldFjj6HzcfXekJx0"; // Start Date
 
 const { transactionRecordId } = input.config();
+if (!transactionRecordId) {
+    throw new Error("Couldn't retrieve transactionRecordId");
+}
 const makeApiKey = input.secret("makeApiKey");
+if (!makeApiKey) {
+    throw new Error("Couldn't retrieve makeApiKey secret");
+}
 const gbApiKey = input.secret("gbApiKey");
+if (!gbApiKey) {
+    throw new Error("Couldn't retrieve gbApiKey secret");
+}
 await processNewTransaction(transactionRecordId);
 
 async function processNewTransaction(recordId) {
