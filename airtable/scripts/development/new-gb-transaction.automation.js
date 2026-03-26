@@ -188,9 +188,10 @@ async function createOrUpdateCampaign(campaignId) {
     const existing = await campaignsTable.selectRecordsAsync({
         fields: [campaignsGbIdFieldId],
     });
-    const matchingRecords = existing.records.filter(
-        (r) => r.getCellValueAsString(campaignsGbIdFieldId) === campaignId
-    );
+    const matchingRecords = existing.records.filter((r) => {
+        const campaigns = r.getCellValueAsString(campaignsGbIdFieldId).split(/\D+/);
+        return campaigns.includes(campaignId);
+    });
     if (matchingRecords.length) {
         if (matchingRecords.length > 1) {
             throw new Error(`There is more than one campaign record with ID ${campaignId}`);
@@ -477,7 +478,9 @@ async function fetchPlan(planId) {
         },
     });
     if (!response.ok) {
-        throw new Error(JSON.stringify(response));
+        throw new Error(
+            `Failed to fetch plan ${planId}: ${response.status} ${response.statusText}`
+        );
     }
     return await response.json();
 }
