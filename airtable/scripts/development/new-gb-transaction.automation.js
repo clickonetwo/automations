@@ -283,20 +283,27 @@ async function createOrUpdateDonor(data, donationRecordId) {
     }
     // if there is no matching contact, create one and link this donation
     console.log(`Contact ${donorId} is being added and linked to this donation`);
-    const newFields = {
+    let newFields = {
         [contactsGbIdFieldId]: donorId,
         [contactsFirstNameFieldId]: data.first_name,
         [contactsLastNameFieldId]: data.last_name,
         [contactsEmail1FieldId]: data.email,
-        [contactsAddressFieldId]:
-            data.address.address_1 + (data.address.address_2 ? "\n" + data.address.address_2 : ""),
-        [contactsCityFieldId]: data.address.city,
-        [contactsStateFieldId]: data.address.state,
-        [contactsZipFieldId]: data.address.zipcode,
-        [contactsCountryFieldId]: { name: data.address.country },
         [contactsPhoneFieldId]: data.phone ? formatPhone(data.phone) : "",
         [contactsDonationsFieldId]: [{ id: donationRecordId }],
     };
+    if (data.address?.country) {
+        console.log(`Contact ${donorId} has country ${data.address.country}`);
+        newFields = {
+            ...newFields,
+            [contactsAddressFieldId]:
+                data.address.address_1 +
+                (data.address.address_2 ? "\n" + data.address.address_2 : ""),
+            [contactsCityFieldId]: data.address.city,
+            [contactsStateFieldId]: data.address.state,
+            [contactsZipFieldId]: data.address.zipcode,
+            [contactsCountryFieldId]: { name: data.address.country },
+        };
+    }
     let id = await contactsTable.createRecordAsync(newFields);
     await notifyNew(
         "contact",
