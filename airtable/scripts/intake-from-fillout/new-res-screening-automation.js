@@ -9,18 +9,18 @@ import { base, input } from "../library/airtable.internal";
 
 // noinspection SpellCheckingInspection
 const formNamedFieldMap = {
-    masterLink: "fldZImdW90sWSc41X", // Potential Client
+    masterLink: "fldmATZHsd646M0wE", // Potential Client
 };
 
 // noinspection SpellCheckingInspection
 const attachmentFieldMap = {
     // map from field IDs in General Inquiry Form table to All Contacts table
-    fldBnoXmLGWCTwQq2: "fldtWTfL7aLfTjMLd", // Permanent Resident Card -> Documents Provided
+    fldmA6B24pwnaVjai: "fldtWTfL7aLfTjMLd", // Green Card -> Documents Provided
 };
 
 // Script invocation (as automation)
 // noinspection SpellCheckingInspection
-const formTable = base.getTable("tblDaONedyuHpGEQG"); // Natz Screening Form
+const formTable = base.getTable("tblpG7NZfsZb6EyNl"); // Residency Screening Form
 // noinspection SpellCheckingInspection
 const masterTable = base.getTable("tblsnJnJ4ubpZFLwq"); // All Contacts Master Table
 const { formRecordId } = input.config();
@@ -63,6 +63,6 @@ async function newScreeningRecordAction() {
         await masterTable.updateRecordAsync(masterRecord.id, masterFields);
         console.log(`Copied ${count} attachments to master record ${masterRecordId}`);
     } else {
-        console.warn(`Form ${formRecordId} has no attachments`);
+        console.log(`Form ${formRecordId} has no attachments`);
     }
 }
